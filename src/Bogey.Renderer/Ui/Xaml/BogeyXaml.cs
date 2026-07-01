@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Xml.Linq;
+using Bogey.Renderer.Gl;
 using Bogey.Renderer.Ui.Controls;
 
 namespace Bogey.Renderer.Ui.Xaml;
@@ -118,6 +119,11 @@ public static class BogeyXaml
         if (underlying == typeof(Thickness))
         {
             return Thickness.Parse(value);
+        }
+
+        if (underlying == typeof(Rgba))
+        {
+            return Rgba.Parse(value);
         }
 
         if (underlying.IsEnum)

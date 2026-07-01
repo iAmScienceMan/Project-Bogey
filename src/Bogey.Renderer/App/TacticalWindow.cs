@@ -40,7 +40,7 @@ public sealed class TacticalWindow : IDisposable
     private BitmapFont _font = null!;
     private TacticalMapRenderer _map = null!;
     private Camera2D _camera = null!;
-    private Control _hud = null!;
+    private TacticalHud _hud = null!;
 
     private Vector2 _lastMousePx;
     private Vector2 _leftDownPx;
@@ -132,11 +132,11 @@ public sealed class TacticalWindow : IDisposable
 
         _debugOverlay?.Draw(_prims, _text, _camera, viewport);
 
-
+        _hud.SelectedUnit = _selectedUnit;
+        _hud.HoveredButton = _hoveredButton;
         _hud.FrameUpdate((float)deltaSeconds);
         _hud.Arrange(new UiRect(0f, 0f, viewport.X, viewport.Y));
         _hud.Draw(_prims, _text);
-        DrawHoveredTooltip(viewport);
 
         _sprites.Flush(viewport);
         _prims.Flush(viewport);
@@ -354,40 +354,6 @@ public sealed class TacticalWindow : IDisposable
         Vector2 destination = _camera.ScreenToWorld(px);
         _session.Enqueue(new MoveCommand { UnitName = _selectedUnit, Destination = destination });
         _pendingOrders[_selectedUnit] = destination;
-    }
-
-    private void DrawHoveredTooltip(Vector2 viewport)
-    {
-        if (_hoveredButton is null)
-        {
-            return;
-        }
-
-        string tip = _hoveredButton.TooltipText;
-        if (tip.Length == 0)
-        {
-            return;
-        }
-
-        const float pad = 6f;
-        const float gap = 6f;
-        float font = UiTheme.TooltipFontPx;
-        float w = TextBatch.Measure(tip, font) + (pad * 2f);
-        float h = font + (pad * 2f);
-
-        float x = _hoveredButton.Bounds.X;
-        float y = _hoveredButton.Bounds.Bottom + gap;
-        if (y + h > viewport.Y)
-        {
-            y = _hoveredButton.Bounds.Y - h - gap;
-        }
-
-        x = Math.Clamp(x, 4f, MathF.Max(4f, viewport.X - w - 4f));
-
-        UiRect box = new(x, y, w, h);
-        _prims.FilledQuad(box.Min, box.Max, UiTheme.TooltipBackground);
-        UiDraw.Box(_prims, box, UiTheme.Border);
-        _text.Text(new Vector2(box.X + pad, box.Y + pad), font, UiTheme.Text, tip);
     }
 
     private void Recenter()

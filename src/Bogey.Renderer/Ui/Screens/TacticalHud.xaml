@@ -1,6 +1,15 @@
 <!-- ReSharper disable All -->
 <Control xmlns="clr-namespace:Bogey.Renderer.Ui.Controls;assembly=Bogey.Renderer">
 
+  <Label Name="WaitingLabel" Anchor="TopLeft" Margin="20" FontSize="16" Color="#CCDBEB"
+         Text="WAITING FOR FIRST SNAPSHOT..." />
+
+  <BoxContainer Name="StatusReadout" Anchor="TopLeft" Orientation="Vertical" DrawBackground="false" Separation="5" Margin="16 14 16 16">
+    <Label Name="TickLabel"     FontSize="15" Color="#CCDBEB" />
+    <Label Name="SpeedLabel"    FontSize="15" Color="#CCDBEB" />
+    <Label Name="SelectedLabel" FontSize="15" Color="#CCDBEB" />
+  </BoxContainer>
+
   <BoxContainer Name="ControlBar" Anchor="TopCenter" Orientation="Horizontal" Separation="7" Padding="7" Margin="14">
     <Button Name="PauseButton"    Icon="||"  Hotkey="Space" ToolTip="Pause / resume" />
     <Button Name="NormalButton"   Icon="1x"  Hotkey="1"     ToolTip="Normal speed" />
@@ -12,5 +21,10 @@
     <Label Text="DEBUG" />
     <Button Name="DeclutterButton" Icon="::" Hotkey="G" ToolTip="Cycle ground-truth declutter" />
   </BoxContainer>
+
+  <Label Name="HintLabel" Anchor="BottomLeft" Margin="16 0 16 11" FontSize="11" Color="#CCDBEBBF"
+         Text="L-CLICK unit:select  L-CLICK map:move  DRAG:pan  SCROLL:zoom  SPACE:pause  1/2:speed  ESC:quit" />
+
+  <Tooltip Name="Tooltip" />
 
 </Control>

@@ -13,6 +13,7 @@ internal static class ControlFactory
         ["PanelContainer"] = () => new PanelContainer(),
         ["Button"] = () => new Button(),
         ["Label"] = () => new Label(),
+        ["Tooltip"] = () => new Tooltip(),
     };
 
     public static Control Create(string elementName)

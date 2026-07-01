@@ -19,7 +19,9 @@ public sealed class BoxContainer : Control
 
     public float Padding { get; set; }
 
-    protected override bool IsOpaque => true;
+    public bool DrawBackground { get; set; } = true;
+
+    protected override bool IsOpaque => DrawBackground;
 
     public override Vector2 Measure()
     {
@@ -93,8 +95,11 @@ public sealed class BoxContainer : Control
             return;
         }
 
-        prims.FilledQuad(Bounds.Min, Bounds.Max, UiTheme.PanelBackground);
-        UiDraw.Box(prims, Bounds, UiTheme.Border);
+        if (DrawBackground)
+        {
+            prims.FilledQuad(Bounds.Min, Bounds.Max, UiTheme.PanelBackground);
+            UiDraw.Box(prims, Bounds, UiTheme.Border);
+        }
 
         foreach (Control child in Children)
         {

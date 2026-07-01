@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Numerics;
 using Bogey.Renderer.Camera;
 using Bogey.Renderer.Gl;
@@ -24,7 +23,6 @@ public sealed class TacticalMapRenderer
     private static readonly Rgba OwnColor = new(0.30f, 0.85f, 1.0f);
     private static readonly Rgba SelectColor = new(1.0f, 0.95f, 0.35f);
     private static readonly Rgba OrderColor = new(0.40f, 1.0f, 0.55f);
-    private static readonly Rgba HudColor = new(0.80f, 0.86f, 0.92f);
     private static readonly Rgba GlyphColor = new(0.97f, 0.97f, 0.97f);
 
     private readonly Dictionary<int, TrackVisual> _visuals = new();
@@ -41,12 +39,9 @@ public sealed class TacticalMapRenderer
         string? selectedUnit,
         IReadOnlyDictionary<string, Vector2> pendingOrders)
     {
-        Vector2 viewport = camera.Viewport;
-
         TrackPictureSnapshot? current = session.Current;
         if (current is null)
         {
-            text.Text(new Vector2(20f, 20f), 16f, HudColor, "WAITING FOR FIRST SNAPSHOT...");
             return;
         }
 
@@ -68,8 +63,6 @@ public sealed class TacticalMapRenderer
                 DrawOrder(prims, camera, worldPos, destination);
             }
         }
-
-        DrawHud(text, session, selectedUnit, viewport);
     }
 
     private void UpdateTrackVisuals(TrackPictureSnapshot current, TrackPictureSnapshot? previous, float alpha, float dt)
@@ -259,25 +252,6 @@ public sealed class TacticalMapRenderer
         prims.Ring(dest, 6f, OrderColor, 20);
         prims.Line(dest - new Vector2(7f, 0f), dest + new Vector2(7f, 0f), OrderColor);
         prims.Line(dest - new Vector2(0f, 7f), dest + new Vector2(0f, 7f), OrderColor);
-    }
-
-    private static void DrawHud(TextBatch text, ISimSession session, string? selectedUnit, Vector2 viewport)
-    {
-        string speed = session.Speed switch
-        {
-            SimSpeed.Paused => "PAUSED",
-            SimSpeed.Normal => "1x",
-            SimSpeed.Fast => "FAST",
-            _ => "?",
-        };
-
-        text.Text(new Vector2(16f, 14f), 15f, HudColor,
-            "TICK " + session.Tick.ToString(CultureInfo.InvariantCulture));
-        text.Text(new Vector2(16f, 34f), 15f, HudColor, "SPEED " + speed);
-        text.Text(new Vector2(16f, 54f), 15f, HudColor, "SELECTED " + (selectedUnit ?? "--"));
-
-        text.Text(new Vector2(16f, viewport.Y - 22f), 11f, HudColor.WithAlpha(0.75f),
-            "L-CLICK unit:select  L-CLICK map:move  DRAG:pan  SCROLL:zoom  SPACE:pause  1/2:speed  ESC:quit");
     }
 
     private static Rgba ColorFor(MarkerStyle style) => style switch

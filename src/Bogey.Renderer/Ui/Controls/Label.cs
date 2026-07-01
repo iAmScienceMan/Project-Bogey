@@ -9,8 +9,12 @@ public sealed class Label : Control
 {
     public string Text { get; set; } = string.Empty;
 
+    public float FontSize { get; set; } = UiTheme.TextBlockFontPx;
+
+    public Rgba Color { get; set; } = UiTheme.Text;
+
     public override Vector2 Measure()
-        => new(TextBatch.Measure(Text, UiTheme.TextBlockFontPx), UiTheme.TextBlockFontPx);
+        => new(TextBatch.Measure(Text, FontSize), FontSize);
 
     public override void Draw(PrimitiveBatch prims, TextBatch text)
     {
@@ -19,6 +23,6 @@ public sealed class Label : Control
             return;
         }
 
-        text.Text(new Vector2(Bounds.X, Bounds.Y), UiTheme.TextBlockFontPx, UiTheme.Text, Text);
+        text.Text(new Vector2(Bounds.X, Bounds.Y), FontSize, Color, Text);
     }
 }
