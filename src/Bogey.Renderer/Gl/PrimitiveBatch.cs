@@ -35,8 +35,9 @@ public sealed class PrimitiveBatch : IDisposable
     private readonly uint _vao;
     private readonly uint _vbo;
 
-    private readonly List<float> _triangles = new();
-    private readonly List<float> _lines = new();
+    private readonly Dictionary<int, LayerBuffers> _layers = new();
+
+    public int Layer { get; set; }
 
     public PrimitiveBatch(GL gl)
     {
@@ -61,8 +62,9 @@ public sealed class PrimitiveBatch : IDisposable
 
     public void Line(Vector2 a, Vector2 b, Rgba color)
     {
-        Push(_lines, a, color);
-        Push(_lines, b, color);
+        LayerBuffers buffers = Current();
+        Push(buffers.Lines, a, color);
+        Push(buffers.Lines, b, color);
     }
 
     
@@ -76,9 +78,10 @@ public sealed class PrimitiveBatch : IDisposable
 
     public void FilledTriangle(Vector2 a, Vector2 b, Vector2 c, Rgba color)
     {
-        Push(_triangles, a, color);
-        Push(_triangles, b, color);
-        Push(_triangles, c, color);
+        LayerBuffers buffers = Current();
+        Push(buffers.Triangles, a, color);
+        Push(buffers.Triangles, b, color);
+        Push(buffers.Triangles, c, color);
     }
 
     public void FilledCircle(Vector2 center, float radius, Rgba color, int segments = 32)
@@ -121,20 +124,39 @@ public sealed class PrimitiveBatch : IDisposable
         }
     }
 
-    
-    public void Flush(Vector2 viewport)
+    public IEnumerable<int> UsedLayers
     {
+        get
+        {
+            foreach ((int layer, LayerBuffers buffers) in _layers)
+            {
+                if (buffers.Triangles.Count > 0 || buffers.Lines.Count > 0)
+                {
+                    yield return layer;
+                }
+            }
+        }
+    }
+
+    public void Flush(Vector2 viewport, int layer)
+    {
+        if (!_layers.TryGetValue(layer, out LayerBuffers? buffers)
+            || (buffers.Triangles.Count == 0 && buffers.Lines.Count == 0))
+        {
+            return;
+        }
+
         _shader.Use();
         _shader.SetUniform("uViewport", viewport.X, viewport.Y);
         _gl.BindVertexArray(_vao);
         _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vbo);
 
-        Draw(_triangles, PrimitiveType.Triangles);
-        Draw(_lines, PrimitiveType.Lines);
+        Draw(buffers.Triangles, PrimitiveType.Triangles);
+        Draw(buffers.Lines, PrimitiveType.Lines);
 
         _gl.BindVertexArray(0);
-        _triangles.Clear();
-        _lines.Clear();
+        buffers.Triangles.Clear();
+        buffers.Lines.Clear();
     }
 
     public void Dispose()
@@ -164,5 +186,23 @@ public sealed class PrimitiveBatch : IDisposable
         data.Add(color.G);
         data.Add(color.B);
         data.Add(color.A);
+    }
+
+    private LayerBuffers Current()
+    {
+        if (!_layers.TryGetValue(Layer, out LayerBuffers? buffers))
+        {
+            buffers = new LayerBuffers();
+            _layers[Layer] = buffers;
+        }
+
+        return buffers;
+    }
+
+    private sealed class LayerBuffers
+    {
+        public List<float> Triangles { get; } = new();
+
+        public List<float> Lines { get; } = new();
     }
 }

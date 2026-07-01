@@ -20,6 +20,7 @@ public sealed class OrderingSystem : SystemBase
             if (_entities.TryGetComponent(entity, out Propulsion propulsion))
             {
                 propulsion.Waypoint = order.Destination;
+                Log.Debug($"Entity {entity} waypoint set to {order.Destination}.");
             }
         });
     }

@@ -1,3 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <ItemGroup>
+    <ProjectReference Include="..\Bogey.Logging\Bogey.Logging.csproj" />
+  </ItemGroup>
+
 </Project>

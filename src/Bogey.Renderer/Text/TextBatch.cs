@@ -44,7 +44,9 @@ public sealed class TextBatch : IDisposable
     private readonly BitmapFont _font;
     private readonly uint _vao;
     private readonly uint _vbo;
-    private readonly List<float> _vertices = new();
+    private readonly Dictionary<int, List<float>> _layers = new();
+
+    public int Layer { get; set; }
 
     public TextBatch(GL gl, BitmapFont font)
     {
@@ -76,6 +78,7 @@ public sealed class TextBatch : IDisposable
     
     public void Text(Vector2 origin, float pixelSize, Rgba color, string text)
     {
+        List<float> data = Current();
         float penX = origin.X;
         foreach (char c in text)
         {
@@ -85,22 +88,36 @@ public sealed class TextBatch : IDisposable
             float x1 = penX + pixelSize;
             float y1 = origin.Y + pixelSize;
 
-            
-            PushVertex(x0, y0, uv.X, uv.Y, color);
-            PushVertex(x1, y0, uv.Z, uv.Y, color);
-            PushVertex(x1, y1, uv.Z, uv.W, color);
 
-            PushVertex(x0, y0, uv.X, uv.Y, color);
-            PushVertex(x1, y1, uv.Z, uv.W, color);
-            PushVertex(x0, y1, uv.X, uv.W, color);
+            PushVertex(data, x0, y0, uv.X, uv.Y, color);
+            PushVertex(data, x1, y0, uv.Z, uv.Y, color);
+            PushVertex(data, x1, y1, uv.Z, uv.W, color);
+
+            PushVertex(data, x0, y0, uv.X, uv.Y, color);
+            PushVertex(data, x1, y1, uv.Z, uv.W, color);
+            PushVertex(data, x0, y1, uv.X, uv.W, color);
 
             penX += pixelSize;
         }
     }
 
-    public void Flush(Vector2 viewport)
+    public IEnumerable<int> UsedLayers
     {
-        if (_vertices.Count == 0)
+        get
+        {
+            foreach ((int layer, List<float> data) in _layers)
+            {
+                if (data.Count > 0)
+                {
+                    yield return layer;
+                }
+            }
+        }
+    }
+
+    public void Flush(Vector2 viewport, int layer)
+    {
+        if (!_layers.TryGetValue(layer, out List<float>? data) || data.Count == 0)
         {
             return;
         }
@@ -113,12 +130,12 @@ public sealed class TextBatch : IDisposable
         _gl.BindVertexArray(_vao);
         _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vbo);
 
-        ReadOnlySpan<float> span = CollectionsMarshal.AsSpan(_vertices);
+        ReadOnlySpan<float> span = CollectionsMarshal.AsSpan(data);
         _gl.BufferData(BufferTargetARB.ArrayBuffer, span, BufferUsageARB.DynamicDraw);
-        _gl.DrawArrays(PrimitiveType.Triangles, 0, (uint)(_vertices.Count / FloatsPerVertex));
+        _gl.DrawArrays(PrimitiveType.Triangles, 0, (uint)(data.Count / FloatsPerVertex));
 
         _gl.BindVertexArray(0);
-        _vertices.Clear();
+        data.Clear();
     }
 
     public void Dispose()
@@ -128,15 +145,26 @@ public sealed class TextBatch : IDisposable
         _gl.DeleteVertexArray(_vao);
     }
 
-    private void PushVertex(float x, float y, float u, float v, Rgba color)
+    private List<float> Current()
     {
-        _vertices.Add(x);
-        _vertices.Add(y);
-        _vertices.Add(u);
-        _vertices.Add(v);
-        _vertices.Add(color.R);
-        _vertices.Add(color.G);
-        _vertices.Add(color.B);
-        _vertices.Add(color.A);
+        if (!_layers.TryGetValue(Layer, out List<float>? data))
+        {
+            data = new List<float>();
+            _layers[Layer] = data;
+        }
+
+        return data;
+    }
+
+    private static void PushVertex(List<float> data, float x, float y, float u, float v, Rgba color)
+    {
+        data.Add(x);
+        data.Add(y);
+        data.Add(u);
+        data.Add(v);
+        data.Add(color.R);
+        data.Add(color.G);
+        data.Add(color.B);
+        data.Add(color.A);
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Bogey.Logging;
 using Bogey.Shared.Components;
 using Bogey.Shared.Events;
 using Bogey.Shared.Prototypes;
@@ -18,11 +19,15 @@ public sealed class SimRuntime
     private readonly SimClock _clock = new();
     private readonly SystemManager _systems = new();
     private readonly TrackingSystem _tracking = new();
+    private readonly ISawmill _log;
 
-    public SimRuntime(IEnumerable<PrototypeDefinition> prototypes, int seed, SimConfig? config = null)
+    public SimRuntime(IEnumerable<PrototypeDefinition> prototypes, int seed, SimConfig? config = null,
+        ILogManager? logManager = null)
     {
         Random rng = new(seed);
         SimConfig effectiveConfig = config ?? new SimConfig();
+        ILogManager log = logManager ?? Logger.LogManager;
+        _log = log.GetSawmill("sim.runtime");
 
         _systems
             .AddService(_entities)
@@ -30,6 +35,7 @@ public sealed class SimRuntime
             .AddService(_clock)
             .AddService(rng)
             .AddService(effectiveConfig)
+            .AddService(log)
             .AddSystem(_tracking)
             .AddSystem(new OrderingSystem())
             .AddSystem(new MovementSystem())
@@ -39,10 +45,14 @@ public sealed class SimRuntime
 
         _systems.Build();
 
+        int spawned = 0;
         foreach (PrototypeDefinition prototype in prototypes)
         {
             PrototypeFactory.Spawn(_entities, prototype);
+            spawned++;
         }
+
+        _log.Info($"Sim initialized: seed={seed}, {spawned} entities spawned from prototypes.");
     }
 
     public int CurrentTick => _clock.CurrentTick;

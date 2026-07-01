@@ -7,6 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Bogey.Shared\Bogey.Shared.csproj" />
     <ProjectReference Include="..\Bogey.View\Bogey.View.csproj" />
+    <ProjectReference Include="..\Bogey.Logging\Bogey.Logging.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Numerics;
+using Bogey.Logging;
 using Bogey.Renderer.App;
 using Bogey.Shared.Prototypes;
 using Bogey.Shared.Tracks;
@@ -16,6 +17,22 @@ public sealed class Program
 {
     public static int Main(string[] args)
     {
+        ILogManager logManager = Logger.InitializeDefault();
+        ISawmill log = logManager.GetSawmill("host");
+
+        try
+        {
+            return Run(args, logManager, log);
+        }
+        catch (Exception ex)
+        {
+            log.Fatal($"Unhandled exception - the game crashed.\n{ex}");
+            return 1;
+        }
+    }
+
+    private static int Run(string[] args, ILogManager logManager, ISawmill log)
+    {
         Options options;
         try
         {
@@ -28,6 +45,11 @@ public sealed class Program
             return 1;
         }
 
+        if (options.Debug)
+        {
+            logManager.RootSawmill.Level = LogLevel.Verbose;
+        }
+
         IReadOnlyList<PrototypeDefinition> prototypes;
         try
         {
@@ -35,11 +57,11 @@ public sealed class Program
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException)
         {
-            Console.Error.WriteLine($"Failed to load prototypes from '{options.PrototypesPath}': {ex.Message}");
+            log.Error($"Failed to load prototypes from '{options.PrototypesPath}': {ex.Message}");
             return 1;
         }
 
-        SimRuntime sim = new(prototypes, options.Seed);
+        SimRuntime sim = new(prototypes, options.Seed, logManager: logManager);
 
         if (options.Render)
         {
@@ -56,7 +78,7 @@ public sealed class Program
 
         for (int i = 0; i < options.Ticks; i++)
         {
-            IssueOrdersForTick(sim, options.Orders, sim.CurrentTick + 1);
+            IssueOrdersForTick(sim, options.Orders, sim.CurrentTick + 1, log);
 
             sim.Step();
 
@@ -102,7 +124,7 @@ public sealed class Program
         return 0;
     }
 
-    private static void IssueOrdersForTick(SimRuntime sim, IReadOnlyList<MoveOrder> orders, int tick)
+    private static void IssueOrdersForTick(SimRuntime sim, IReadOnlyList<MoveOrder> orders, int tick, ISawmill log)
     {
         foreach (MoveOrder order in orders)
         {
@@ -116,11 +138,11 @@ public sealed class Program
 
             if (sim.IssueMoveOrder(order.Unit, order.Destination))
             {
-                Console.WriteLine($"[tick {tick}] order: {order.Unit} -> {target}");
+                log.Info($"[tick {tick}] order: {order.Unit} -> {target}");
             }
             else
             {
-                Console.Error.WriteLine($"[tick {tick}] order ignored: no movable friendly unit named '{order.Unit}'.");
+                log.Warning($"[tick {tick}] order ignored: no movable friendly unit named '{order.Unit}'.");
             }
         }
     }

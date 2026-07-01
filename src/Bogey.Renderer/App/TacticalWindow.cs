@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Bogey.Logging;
 using Bogey.Renderer.Camera;
 using Bogey.Renderer.Gl;
 using Bogey.Renderer.Map;
 using Bogey.Renderer.RealTime;
 using Bogey.Renderer.Text;
 using Bogey.Renderer.Ui;
+using Bogey.Renderer.Ui.Console;
 using Bogey.Renderer.Ui.Controls;
 using Bogey.Renderer.Ui.Screens;
 using Bogey.Shared.Commands;
@@ -21,9 +23,9 @@ namespace Bogey.Renderer.App;
 
 public sealed class TacticalWindow : IDisposable
 {
-    private const float ClickThresholdPx = 5f;   
-    private const float UnitPickRadiusPx = 16f;   
-    private const float OrderArriveKm = 2f;       
+    private const float ClickThresholdPx = 5f;
+    private const float UnitPickRadiusPx = 16f;
+    private const float OrderArriveKm = 2f;
 
     private readonly RendererOptions _options;
     private readonly ISimSession _session;
@@ -41,6 +43,7 @@ public sealed class TacticalWindow : IDisposable
     private TacticalMapRenderer _map = null!;
     private Camera2D _camera = null!;
     private TacticalHud _hud = null!;
+    private DevConsole _console = null!;
 
     private Vector2 _lastMousePx;
     private Vector2 _leftDownPx;
@@ -103,6 +106,7 @@ public sealed class TacticalWindow : IDisposable
         _camera = new Camera2D(framebuffer, Vector2.Zero, _options.InitialZoomPxPerKm);
 
         _hud = new TacticalHud(_session, _debugOverlay, Recenter);
+        _console = new DevConsole(Logger.LogManager);
 
         foreach (IMouse mouse in _input.Mice)
         {
@@ -115,6 +119,7 @@ public sealed class TacticalWindow : IDisposable
         foreach (IKeyboard keyboard in _input.Keyboards)
         {
             keyboard.KeyDown += OnKeyDown;
+            keyboard.KeyChar += OnKeyChar;
         }
     }
 
@@ -128,22 +133,47 @@ public sealed class TacticalWindow : IDisposable
 
         _gl.Clear((uint)ClearBufferMask.ColorBufferBit);
 
+        SetLayer(RenderLayer.World);
         _map.Draw(_session, _camera, _prims, _sprites, _entitySprites, _text, (float)deltaSeconds, _selectedUnit, _pendingOrders);
-
         _debugOverlay?.Draw(_prims, _text, _camera, viewport);
 
+        SetLayer(RenderLayer.Ui);
         _hud.SelectedUnit = _selectedUnit;
         _hud.HoveredButton = _hoveredButton;
         _hud.FrameUpdate((float)deltaSeconds);
         _hud.Arrange(new UiRect(0f, 0f, viewport.X, viewport.Y));
         _hud.Draw(_prims, _text);
 
-        _sprites.Flush(viewport);
-        _prims.Flush(viewport);
-        _text.Flush(viewport);
+        SetLayer(RenderLayer.Overlay);
+        _console.FrameUpdate((float)deltaSeconds);
+        _console.Arrange(new UiRect(0f, 0f, viewport.X, viewport.Y));
+        _console.Draw(_prims, _text);
+
+        FlushLayered(viewport);
     }
 
-    
+    private void SetLayer(RenderLayer layer)
+    {
+        _prims.Layer = (int)layer;
+        _text.Layer = (int)layer;
+    }
+
+    private void FlushLayered(Vector2 viewport)
+    {
+        _sprites.Flush(viewport);
+
+        SortedSet<int> layers = new();
+        layers.UnionWith(_prims.UsedLayers);
+        layers.UnionWith(_text.UsedLayers);
+
+        foreach (int layer in layers)
+        {
+            _prims.Flush(viewport, layer);
+            _text.Flush(viewport, layer);
+        }
+    }
+
+
     private void PruneArrivedOrders()
     {
         TrackPictureSnapshot? current = _session.Current;
@@ -177,6 +207,11 @@ public sealed class TacticalWindow : IDisposable
 
     private void OnMouseDown(IMouse mouse, MouseButton button)
     {
+        if (_console.IsOpen)
+        {
+            return;
+        }
+
         if (button != MouseButton.Left)
         {
             return;
@@ -206,6 +241,11 @@ public sealed class TacticalWindow : IDisposable
 
     private void OnMouseUp(IMouse mouse, MouseButton button)
     {
+        if (_console.IsOpen)
+        {
+            return;
+        }
+
         Vector2 px = ToFramebuffer(mouse.Position);
 
         if (button == MouseButton.Right)
@@ -275,10 +315,16 @@ public sealed class TacticalWindow : IDisposable
             return;
         }
 
+        if (_console.IsOpen)
+        {
+            _console.HandleScroll(wheel.Y);
+            return;
+        }
+
         Vector2 px = ToFramebuffer(mouse.Position);
         if (_hud.HitTestOpaque(px) is not null)
         {
-            return; 
+            return;
         }
 
         float factor = MathF.Pow(1.15f, wheel.Y);
@@ -308,8 +354,26 @@ public sealed class TacticalWindow : IDisposable
         }
     }
 
+    // shitcode ahead pull up woop woop
+    public void Close()
+    {
+        _window?.Close();
+    }
+
     private void OnKeyDown(IKeyboard keyboard, Key key, int scancode)
     {
+        if (key == Key.GraveAccent)
+        {
+            _console.Toggle();
+            return;
+        }
+
+        if (_console.IsOpen)
+        {
+            _console.HandleKey(key);
+            return;
+        }
+
         switch (key)
         {
             case Key.Space:
@@ -327,13 +391,21 @@ public sealed class TacticalWindow : IDisposable
                 Recenter();
                 break;
             case Key.G:
-                
+
                 _debugOverlay?.CycleDisplay();
                 break;
             case Key.Escape:
             case Key.Q:
                 _window?.Close();
                 break;
+        }
+    }
+
+    private void OnKeyChar(IKeyboard keyboard, char c)
+    {
+        if (_console.IsOpen)
+        {
+            _console.HandleChar(c);
         }
     }
 
