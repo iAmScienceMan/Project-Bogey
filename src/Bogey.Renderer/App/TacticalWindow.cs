@@ -354,12 +354,6 @@ public sealed class TacticalWindow : IDisposable
         }
     }
 
-    // shitcode ahead pull up woop woop
-    public void Close()
-    {
-        _window?.Close();
-    }
-
     private void OnKeyDown(IKeyboard keyboard, Key key, int scancode)
     {
         if (key == Key.GraveAccent)
