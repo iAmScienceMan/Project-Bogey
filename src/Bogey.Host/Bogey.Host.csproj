@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Bogey.Sim\Bogey.Sim.csproj" />
+    <ProjectReference Include="..\Bogey.View\Bogey.View.csproj" />
+    <ProjectReference Include="..\Bogey.Renderer\Bogey.Renderer.csproj" />
+    <ProjectReference Include="..\Bogey.Shared\Bogey.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\Prototypes\**\*.yaml" Link="Prototypes\%(RecursiveDir)%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

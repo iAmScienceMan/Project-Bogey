@@ -1,0 +1,16 @@
+# command ship, the reference unit and main sensor
+name: BVS Meridian (flagship)
+faction: Friendly
+transform:
+  position: [0, 0]
+  velocity: [0, 0]
+signature: 0.7
+sensor:
+  rangeKm: 150
+  maxDetectProbability: 0.95
+  falloffExponent: 1.5
+propulsion:
+  maxSpeedKmPerTick: 0.4
+classification:
+  domain: Surface
+  typeName: Meridian-class command vessel

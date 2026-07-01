@@ -1,0 +1,15 @@
+<Control xmlns="clr-namespace:Bogey.Renderer.Ui.Controls;assembly=Bogey.Renderer">
+
+  <BoxContainer Name="ControlBar" Anchor="TopCenter" Orientation="Horizontal" Separation="7" Padding="7" Margin="14">
+    <Button Name="PauseButton"    Icon=""  Hotkey="Space" ToolTip="Pause / resume" />
+    <Button Name="NormalButton"   Icon=""  Hotkey="1"     ToolTip="Normal speed" />
+    <Button Name="FastButton"     Icon=""  Hotkey="2"     ToolTip="Fast forward" />
+    <Button Name="RecenterButton" Icon="" Hotkey="C"     ToolTip="Recenter on flagship" />
+  </BoxContainer>
+
+  <BoxContainer Name="DebugPanel" Anchor="TopRight" Orientation="Vertical" Separation="7" Padding="7" Margin="14">
+    <Label Text="DEBUG" />
+    <Button Name="DeclutterButton" Icon="" Hotkey="G" ToolTip="Cycle ground-truth declutter" />
+  </BoxContainer>
+
+</Control>

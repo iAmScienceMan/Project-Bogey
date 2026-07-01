@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Bogey.Host/Bogey.Host.csproj" />
+    <Project Path="src/Bogey.Renderer.Xaml.Generator/Bogey.Renderer.Xaml.Generator.csproj" />
+    <Project Path="src/Bogey.Renderer/Bogey.Renderer.csproj" />
+    <Project Path="src/Bogey.Shared/Bogey.Shared.csproj" />
+    <Project Path="src/Bogey.Sim/Bogey.Sim.csproj" />
+    <Project Path="src/Bogey.View/Bogey.View.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Bogey.Tests/Bogey.Tests.csproj" />
+  </Folder>
+</Solution>

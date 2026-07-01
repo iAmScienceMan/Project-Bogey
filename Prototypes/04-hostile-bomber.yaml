@@ -1,0 +1,9 @@
+name: Goliath-class bomber
+faction: Hostile
+transform:
+  position: [120, -40]
+  velocity: [-1.2, 0.3]
+signature: 0.9
+classification:
+  domain: Air
+  typeName: Goliath-class heavy bomber
