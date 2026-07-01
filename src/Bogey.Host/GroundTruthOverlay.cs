@@ -127,7 +127,7 @@ public sealed class GroundTruthOverlay : IDebugOverlay
     {
         string mode = _mode == DisplayMode.LabelsAndMarkers ? "labels" : "markers";
         text.Text(new Vector2(16f, viewport.Y - 40f), 12f, LabelColor,
-            "DEBUG GROUND TRUTH [" + mode + "]  (host-only, hidden from the track picture)   G: declutter   RIGHT-CLICK: move any entity");
+            "DEBUG GROUND TRUTH [" + mode + "]   G: declutter   RIGHT-CLICK: move any entity");
 
         if (selectedName is not null)
         {

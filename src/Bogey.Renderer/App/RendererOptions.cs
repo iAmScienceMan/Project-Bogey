@@ -1,3 +1,6 @@
+using System;
+using System.IO;
+
 namespace Bogey.Renderer.App;
 
 public sealed record RendererOptions
@@ -8,6 +11,9 @@ public sealed record RendererOptions
 
     public string Title { get; init; } = "PROJECT BOGEY - tactical";
 
-    
+
     public float InitialZoomPxPerKm { get; init; } = 4f;
+
+
+    public string SpritesPath { get; init; } = Path.Combine(AppContext.BaseDirectory, "Resources");
 }

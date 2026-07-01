@@ -34,6 +34,8 @@ public sealed class TacticalWindow : IDisposable
     private GL _gl = null!;
     private IInputContext _input = null!;
     private PrimitiveBatch _prims = null!;
+    private SpriteBatch _sprites = null!;
+    private EntitySprites _entitySprites = null!;
     private TextBatch _text = null!;
     private BitmapFont _font = null!;
     private TacticalMapRenderer _map = null!;
@@ -92,6 +94,8 @@ public sealed class TacticalWindow : IDisposable
 
         _font = new BitmapFont(_gl);
         _prims = new PrimitiveBatch(_gl);
+        _sprites = new SpriteBatch(_gl);
+        _entitySprites = EntitySprites.Load(_gl, _options.SpritesPath);
         _text = new TextBatch(_gl, _font);
         _map = new TacticalMapRenderer();
 
@@ -124,16 +128,17 @@ public sealed class TacticalWindow : IDisposable
 
         _gl.Clear((uint)ClearBufferMask.ColorBufferBit);
 
-        _map.Draw(_session, _camera, _prims, _text, (float)deltaSeconds, _selectedUnit, _pendingOrders);
+        _map.Draw(_session, _camera, _prims, _sprites, _entitySprites, _text, (float)deltaSeconds, _selectedUnit, _pendingOrders);
 
         _debugOverlay?.Draw(_prims, _text, _camera, viewport);
 
-        
+
         _hud.FrameUpdate((float)deltaSeconds);
         _hud.Arrange(new UiRect(0f, 0f, viewport.X, viewport.Y));
         _hud.Draw(_prims, _text);
         DrawHoveredTooltip(viewport);
 
+        _sprites.Flush(viewport);
         _prims.Flush(viewport);
         _text.Flush(viewport);
     }
@@ -421,6 +426,8 @@ public sealed class TacticalWindow : IDisposable
     private void OnClosing()
     {
         _prims.Dispose();
+        _sprites.Dispose();
+        _entitySprites.Dispose();
         _text.Dispose();
         _font.Dispose();
         _input.Dispose();

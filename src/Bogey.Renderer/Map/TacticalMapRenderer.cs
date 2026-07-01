@@ -15,9 +15,11 @@ public sealed class TacticalMapRenderer
 {
     private const float FadeInSeconds = 0.25f;
     private const float FadeOutSeconds = 0.6f;
-    private const float MarkerRadiusPx = 9f;
-    private const float OwnMarkerPx = 9f;
-    private const float MinErrorRingPx = 6f;
+    private const float MarkerRadiusKm = 2.25f;
+    private const float OwnMarkerKm = 2.25f;
+    private const float SpriteSideKm = 7.5f;
+    private const float MinMarkerPx = 4f;
+    private const float MinSpritePx = 14f;
 
     private static readonly Rgba OwnColor = new(0.30f, 0.85f, 1.0f);
     private static readonly Rgba SelectColor = new(1.0f, 0.95f, 0.35f);
@@ -32,6 +34,8 @@ public sealed class TacticalMapRenderer
         ISimSession session,
         Camera2D camera,
         PrimitiveBatch prims,
+        SpriteBatch sprites,
+        EntitySprites entitySprites,
         TextBatch text,
         float frameDt,
         string? selectedUnit,
@@ -51,13 +55,13 @@ public sealed class TacticalMapRenderer
         
         foreach (int id in SortedVisualIds())
         {
-            DrawTrack(prims, text, camera, _visuals[id]);
+            DrawTrack(prims, sprites, entitySprites, text, camera, _visuals[id]);
         }
 
         foreach ((OwnUnitView unit, Vector2 worldPos) in Interp.OwnUnits(session))
         {
             bool selected = string.Equals(unit.Name, selectedUnit, StringComparison.Ordinal);
-            DrawOwnUnit(prims, text, camera, unit, worldPos, selected);
+            DrawOwnUnit(prims, sprites, entitySprites, text, camera, unit, worldPos, selected);
 
             if (pendingOrders.TryGetValue(unit.Name, out Vector2 destination))
             {
@@ -134,7 +138,7 @@ public sealed class TacticalMapRenderer
         return ids;
     }
 
-    private static void DrawTrack(PrimitiveBatch prims, TextBatch text, Camera2D camera, TrackVisual visual)
+    private static void DrawTrack(PrimitiveBatch prims, SpriteBatch sprites, EntitySprites entitySprites, TextBatch text, Camera2D camera, TrackVisual visual)
     {
         Track track = visual.Latest!;
         MarkerStyle style = TrackPresentation.StyleFor(track);
@@ -143,37 +147,59 @@ public sealed class TacticalMapRenderer
         float opacity = (0.35f + (0.65f * confidence)) * visual.Fade;
 
         Vector2 screen = camera.WorldToScreen(visual.Position);
+        float markerPx = MathF.Max(MinMarkerPx, camera.KmToPixels(MarkerRadiusKm));
 
-        
-        float errorPx = MathF.Max(MinErrorRingPx, camera.KmToPixels(track.PositionalErrorKm));
+        float errorPx = MathF.Max(markerPx * 0.7f, camera.KmToPixels(track.PositionalErrorKm));
         prims.Ring(screen, errorPx, baseColor.WithAlpha(0.22f * visual.Fade), 40);
 
+        Texture? sprite = entitySprites.ForTrack(track);
+        float topOffsetPx;
+        if (sprite is not null)
+        {
+            float sidePx = MathF.Max(MinSpritePx, camera.KmToPixels(SpriteSideKm));
+            float styleAlpha = style switch
+            {
+                MarkerStyle.Stale => 0.7f,
+                MarkerStyle.Dropped => 0.5f,
+                _ => 1f,
+            };
+            sprites.Draw(sprite, screen, sidePx, new Rgba(1f, 1f, 1f, opacity * styleAlpha));
+            topOffsetPx = sidePx * 0.5f;
+        }
+        else
+        {
+            DrawMarkerShape(prims, screen, markerPx, style, baseColor, opacity);
+
+            char glyph = TrackPresentation.ScopeGlyph(track);
+            float glyphSize = MathF.Max(10f, markerPx * 1.3f);
+            text.Text(screen - new Vector2(glyphSize * 0.5f, glyphSize * 0.5f), glyphSize,
+                GlyphColor.WithAlpha(MathF.Min(1f, opacity + 0.2f)), glyph.ToString());
+            topOffsetPx = markerPx;
+        }
+
+        DrawConfidenceBar(prims, screen - new Vector2(0f, topOffsetPx + 9f), confidence, baseColor, visual.Fade);
+    }
+
+    private static void DrawMarkerShape(PrimitiveBatch prims, Vector2 screen, float radiusPx, MarkerStyle style, Rgba baseColor, float opacity)
+    {
         switch (style)
         {
             case MarkerStyle.Identified:
-                prims.FilledCircle(screen, MarkerRadiusPx, baseColor.WithAlpha(opacity));
+                prims.FilledCircle(screen, radiusPx, baseColor.WithAlpha(opacity));
                 break;
             case MarkerStyle.Classifying:
-                prims.Ring(screen, MarkerRadiusPx, baseColor.WithAlpha(opacity));
+                prims.Ring(screen, radiusPx, baseColor.WithAlpha(opacity));
                 break;
             case MarkerStyle.Stale:
-                prims.DashedRing(screen, MarkerRadiusPx, baseColor.WithAlpha(opacity * 0.7f));
+                prims.DashedRing(screen, radiusPx, baseColor.WithAlpha(opacity * 0.7f));
                 break;
             case MarkerStyle.Dropped:
-                prims.DashedRing(screen, MarkerRadiusPx, baseColor.WithAlpha(opacity * 0.5f));
+                prims.DashedRing(screen, radiusPx, baseColor.WithAlpha(opacity * 0.5f));
                 break;
-            default: 
-                prims.DashedRing(screen, MarkerRadiusPx, baseColor.WithAlpha(opacity));
+            default:
+                prims.DashedRing(screen, radiusPx, baseColor.WithAlpha(opacity));
                 break;
         }
-
-        
-        char glyph = TrackPresentation.ScopeGlyph(track);
-        const float glyphSize = 12f;
-        text.Text(screen - new Vector2(glyphSize * 0.5f, glyphSize * 0.5f), glyphSize,
-            GlyphColor.WithAlpha(MathF.Min(1f, opacity + 0.2f)), glyph.ToString());
-
-        DrawConfidenceBar(prims, screen - new Vector2(0f, MarkerRadiusPx + 9f), confidence, baseColor, visual.Fade);
     }
 
     private static void DrawConfidenceBar(PrimitiveBatch prims, Vector2 center, float confidence, Rgba color, float fade)
@@ -188,7 +214,7 @@ public sealed class TacticalMapRenderer
         prims.FilledQuad(min, fillMax, color.WithAlpha(0.85f * fade));
     }
 
-    private static void DrawOwnUnit(PrimitiveBatch prims, TextBatch text, Camera2D camera, OwnUnitView unit, Vector2 worldPos, bool selected)
+    private static void DrawOwnUnit(PrimitiveBatch prims, SpriteBatch sprites, EntitySprites entitySprites, TextBatch text, Camera2D camera, OwnUnitView unit, Vector2 worldPos, bool selected)
     {
         Vector2 screen = camera.WorldToScreen(worldPos);
 
@@ -197,21 +223,32 @@ public sealed class TacticalMapRenderer
             prims.Ring(screen, camera.KmToPixels(unit.SensorRangeKm), OwnColor.WithAlpha(0.13f), 72);
         }
 
-        
-        float s = OwnMarkerPx;
-        Vector2 top = screen + new Vector2(0f, -s);
-        Vector2 right = screen + new Vector2(s, 0f);
-        Vector2 bottom = screen + new Vector2(0f, s);
-        Vector2 left = screen + new Vector2(-s, 0f);
-        prims.FilledTriangle(top, right, bottom, OwnColor);
-        prims.FilledTriangle(top, bottom, left, OwnColor);
+        Texture? sprite = entitySprites.OwnUnit;
+        float halfExtentPx;
+        if (sprite is not null)
+        {
+            float sidePx = MathF.Max(MinSpritePx, camera.KmToPixels(SpriteSideKm));
+            sprites.Draw(sprite, screen, sidePx, new Rgba(1f, 1f, 1f, 1f));
+            halfExtentPx = sidePx * 0.5f;
+        }
+        else
+        {
+            float s = MathF.Max(MinMarkerPx, camera.KmToPixels(OwnMarkerKm));
+            Vector2 top = screen + new Vector2(0f, -s);
+            Vector2 right = screen + new Vector2(s, 0f);
+            Vector2 bottom = screen + new Vector2(0f, s);
+            Vector2 left = screen + new Vector2(-s, 0f);
+            prims.FilledTriangle(top, right, bottom, OwnColor);
+            prims.FilledTriangle(top, bottom, left, OwnColor);
+            halfExtentPx = s;
+        }
 
         if (selected)
         {
-            prims.Ring(screen, s + 6f, SelectColor, 40);
+            prims.Ring(screen, halfExtentPx + 6f, SelectColor, 40);
         }
 
-        text.Text(screen + new Vector2(s + 4f, -s), 12f, OwnColor, unit.Name);
+        text.Text(screen + new Vector2(halfExtentPx + 4f, -halfExtentPx), 12f, OwnColor, unit.Name);
     }
 
     private static void DrawOrder(PrimitiveBatch prims, Camera2D camera, Vector2 fromWorld, Vector2 destWorld)

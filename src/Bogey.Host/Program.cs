@@ -129,7 +129,7 @@ public sealed class Program
 
     private static void PrintGroundTruth(SimRuntime sim)
     {
-        Console.WriteLine("  -- [DEBUG] ground truth (host-only, never seen by the View) --");
+        Console.WriteLine("  -- [DEBUG] ground truth --");
         foreach (GroundTruthEntry entry in sim.DumpGroundTruth())
         {
             string pos = string.Create(CultureInfo.InvariantCulture,
