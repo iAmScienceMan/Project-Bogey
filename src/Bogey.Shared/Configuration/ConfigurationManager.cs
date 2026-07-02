@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
+using System.Linq;
 using System.Reflection;
+using System.Text;
 using Bogey.Logging;
 
 namespace Bogey.Shared.Configuration;
@@ -12,10 +15,86 @@ public sealed class ConfigurationManager : IConfigurationManager
     private readonly Dictionary<string, object> _values = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<Action<object>>> _handlers = new(StringComparer.Ordinal);
     private readonly ILogbook? _log;
+    private string? _persistPath;
 
     public ConfigurationManager(ILogbook? log = null) => _log = log;
 
     public IReadOnlyCollection<CVarDef> Definitions => _defs.Values;
+
+    public void LoadArchive(string path)
+    {
+        if (!File.Exists(path))
+        {
+            return;
+        }
+
+        string[] lines;
+        try
+        {
+            lines = File.ReadAllLines(path);
+        }
+        catch (IOException ex)
+        {
+            _log?.Error($"Failed to read settings '{path}': {ex.Message}");
+            return;
+        }
+
+        foreach (string line in lines)
+        {
+            string trimmed = line.Trim();
+            if (trimmed.Length == 0 || trimmed[0] == '#')
+            {
+                continue;
+            }
+
+            int separator = trimmed.IndexOf('=');
+            if (separator < 0)
+            {
+                continue;
+            }
+
+            string name = trimmed[..separator].Trim();
+            string value = trimmed[(separator + 1)..].Trim();
+
+            if (!_defs.TryGetValue(name, out CVarDef? def) || !def.Flags.HasFlag(CVarFlags.Archive))
+            {
+                continue;
+            }
+
+            if (!TrySetCVar(name, value, out string? error))
+            {
+                _log?.Warning($"Ignoring saved setting '{name}': {error}");
+            }
+        }
+    }
+
+    public void EnablePersistence(string path) => _persistPath = path;
+
+    public void Save()
+    {
+        if (_persistPath is null)
+        {
+            return;
+        }
+
+        StringBuilder builder = new();
+        builder.AppendLine("# Project Bogey settings - saved automatically.");
+        foreach (CVarDef def in _defs.Values
+                     .Where(d => d.Flags.HasFlag(CVarFlags.Archive) && !_values[d.Name].Equals(d.DefaultBoxed))
+                     .OrderBy(static d => d.Name, StringComparer.Ordinal))
+        {
+            builder.Append(def.Name).Append(" = ").AppendLine(GetCVarString(def.Name));
+        }
+
+        try
+        {
+            File.WriteAllText(_persistPath, builder.ToString());
+        }
+        catch (IOException ex)
+        {
+            _log?.Error($"Failed to save settings '{_persistPath}': {ex.Message}");
+        }
+    }
 
     public void RegisterCVars(Type holder)
     {
@@ -104,14 +183,20 @@ public sealed class ConfigurationManager : IConfigurationManager
     private void Store(string name, object value)
     {
         _values[name] = value;
-        if (!_handlers.TryGetValue(name, out List<Action<object>>? list))
+
+        if (_handlers.TryGetValue(name, out List<Action<object>>? list))
         {
-            return;
+            foreach (Action<object> handler in list)
+            {
+                handler(value);
+            }
         }
 
-        foreach (Action<object> handler in list)
+        if (_persistPath is not null
+            && _defs.TryGetValue(name, out CVarDef? def)
+            && def.Flags.HasFlag(CVarFlags.Archive))
         {
-            handler(value);
+            Save();
         }
     }
 

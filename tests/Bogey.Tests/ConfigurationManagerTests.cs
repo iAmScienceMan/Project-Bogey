@@ -1,3 +1,4 @@
+using System.IO;
 using Bogey.Shared.Configuration;
 using NUnit.Framework;
 
@@ -18,6 +19,7 @@ public sealed class ConfigurationManagerTests
     private static readonly CVarDef<bool> BoolVar = CVarDef.Create("test.bool", false);
     private static readonly CVarDef<string> StringVar = CVarDef.Create("test.string", "hi");
     private static readonly CVarDef<Mode> ModeVar = CVarDef.Create("test.mode", Mode.Off);
+    private static readonly CVarDef<int> ArchivedVar = CVarDef.Create("test.archived", 1, CVarFlags.Archive);
 
     private static ConfigurationManager Make()
     {
@@ -27,6 +29,7 @@ public sealed class ConfigurationManagerTests
         cfg.Register(BoolVar);
         cfg.Register(StringVar);
         cfg.Register(ModeVar);
+        cfg.Register(ArchivedVar);
         return cfg;
     }
 
@@ -120,6 +123,51 @@ public sealed class ConfigurationManagerTests
         cfg.SetCVar(IntVar, 100);
         cfg.ResetToDefault(IntVar);
         Assert.That(cfg.GetCVar(IntVar), Is.EqualTo(5));
+    }
+
+    [Test]
+    public void Persistence_RoundTripsArchivedCVars_ButNotUnflagged()
+    {
+        string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        try
+        {
+            ConfigurationManager saved = Make();
+            saved.EnablePersistence(path);
+            saved.SetCVar(ArchivedVar, 99);
+            saved.SetCVar(IntVar, 42);
+
+            ConfigurationManager loaded = Make();
+            loaded.LoadArchive(path);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(loaded.GetCVar(ArchivedVar), Is.EqualTo(99));
+                Assert.That(loaded.GetCVar(IntVar), Is.EqualTo(5));
+            });
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Test]
+    public void EnablePersistence_DoesNotResaveOnPlainLoad()
+    {
+        string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        try
+        {
+            ConfigurationManager cfg = Make();
+            cfg.LoadArchive(path);
+            Assert.That(File.Exists(path), Is.False);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
     }
 
     [Test]

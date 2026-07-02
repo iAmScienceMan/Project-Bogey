@@ -487,3 +487,6 @@ $RECYCLE.BIN/
 **/bin/
 **/obj/
 .DS_Store
+
+# Persisted settings written next to the working dir during development
+bogey.cfg

@@ -4,6 +4,10 @@
     <OutputType>Exe</OutputType>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(_IsPublishing)' == 'true'">
+    <DefineConstants>$(DefineConstants);BOGEY_PUBLISH</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Bogey.Sim\Bogey.Sim.csproj" />
     <ProjectReference Include="..\Bogey.View\Bogey.View.csproj" />

@@ -49,34 +49,34 @@ public static class CVars
         CVarDef.Create("sim.fast_tps", 10f, CVarFlags.Archive, "Ticks per second at fast speed.");
 
     public static readonly CVarDef<float> SimInitialConfidence =
-        CVarDef.Create("sim.initial_confidence", 0.12f, CVarFlags.None, "Track confidence on first detection.");
+        CVarDef.Create("sim.initial_confidence", 0.12f, CVarFlags.Archive, "Track confidence on first detection.");
 
     public static readonly CVarDef<float> SimConfidenceGain =
-        CVarDef.Create("sim.confidence_gain", 0.14f, CVarFlags.None, "Confidence gained per sensor hit.");
+        CVarDef.Create("sim.confidence_gain", 0.14f, CVarFlags.Archive, "Confidence gained per sensor hit.");
 
     public static readonly CVarDef<float> SimClassifyThreshold =
-        CVarDef.Create("sim.classify_threshold", 0.40f, CVarFlags.None, "Confidence needed to classify a contact.");
+        CVarDef.Create("sim.classify_threshold", 0.40f, CVarFlags.Archive, "Confidence needed to classify a contact.");
 
     public static readonly CVarDef<float> SimIdentifyThreshold =
-        CVarDef.Create("sim.identify_threshold", 0.75f, CVarFlags.None, "Confidence needed to identify a contact.");
+        CVarDef.Create("sim.identify_threshold", 0.75f, CVarFlags.Archive, "Confidence needed to identify a contact.");
 
     public static readonly CVarDef<float> SimPositionalErrorBase =
-        CVarDef.Create("sim.pos_error_base", 3.0f, CVarFlags.None, "Base positional error in km.");
+        CVarDef.Create("sim.pos_error_base", 3.0f, CVarFlags.Archive, "Base positional error in km.");
 
     public static readonly CVarDef<float> SimObservationNoise =
-        CVarDef.Create("sim.obs_noise", 4.0f, CVarFlags.None, "Per-observation position noise in km.");
+        CVarDef.Create("sim.obs_noise", 4.0f, CVarFlags.Archive, "Per-observation position noise in km.");
 
     public static readonly CVarDef<float> SimDecayFactor =
-        CVarDef.Create("sim.decay_factor", 0.90f, CVarFlags.None, "Confidence retained per decay step.");
+        CVarDef.Create("sim.decay_factor", 0.90f, CVarFlags.Archive, "Confidence retained per decay step.");
 
     public static readonly CVarDef<float> SimPositionalErrorGrowth =
-        CVarDef.Create("sim.pos_error_growth", 2.5f, CVarFlags.None, "Positional error growth in km per idle tick.");
+        CVarDef.Create("sim.pos_error_growth", 2.5f, CVarFlags.Archive, "Positional error growth in km per idle tick.");
 
     public static readonly CVarDef<int> SimStaleTicks =
-        CVarDef.Create("sim.stale_ticks", 8, CVarFlags.None, "Idle ticks before a track is marked stale.");
+        CVarDef.Create("sim.stale_ticks", 8, CVarFlags.Archive, "Idle ticks before a track is marked stale.");
 
     public static readonly CVarDef<int> SimDropTicks =
-        CVarDef.Create("sim.drop_ticks", 20, CVarFlags.None, "Idle ticks before a track is dropped.");
+        CVarDef.Create("sim.drop_ticks", 20, CVarFlags.Archive, "Idle ticks before a track is dropped.");
 
     private static string DefaultFontPath()
         => Path.Combine(AppContext.BaseDirectory, "Resources", "Fonts", "IosevkaTerm.ttf");

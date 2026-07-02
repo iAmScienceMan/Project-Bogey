@@ -50,9 +50,13 @@ public sealed class Program
             logManager.RootLogbook.Level = LogLevel.Verbose;
         }
 
-        IConfigurationManager cfg = new ConfigurationManager(logManager.GetLogbook("config"));
+        ConfigurationManager cfg = new(logManager.GetLogbook("config"));
         cfg.RegisterCVars(typeof(CVars));
+
+        string settingsPath = SettingsPath();
+        cfg.LoadArchive(settingsPath);
         options.ApplyTo(cfg);
+        cfg.EnablePersistence(settingsPath);
 
         IReadOnlyList<PrototypeDefinition> prototypes;
         try
@@ -103,6 +107,16 @@ public sealed class Program
         return 0;
     }
 
+    private static string SettingsPath()
+    {
+        const string fileName = "bogey.cfg";
+#if BOGEY_PUBLISH
+        return Path.Combine(AppContext.BaseDirectory, fileName);
+#else
+        return Path.Combine(Directory.GetCurrentDirectory(), fileName);
+#endif
+    }
+
     private static SimConfig BuildSimConfig(IConfigurationManager cfg) => new()
     {
         InitialConfidence = cfg.GetCVar(CVars.SimInitialConfidence),
@@ -124,15 +138,18 @@ public sealed class Program
 
         public int Seed { get; private set; } = 1337;
         public bool Debug { get; private set; }
-        public float UiScale { get; private set; } = 1f;
+        public float? UiScale { get; private set; }
         public string PrototypesPath { get; private set; } =
             Path.Combine(AppContext.BaseDirectory, "Resources", "Prototypes");
 
         public void ApplyTo(IConfigurationManager cfg)
         {
             cfg.SetCVar(CVars.GameSeed, Seed);
-            cfg.SetCVar(CVars.UiScale, UiScale);
             cfg.SetCVar(CVars.DebugOverlay, Debug);
+            if (UiScale is { } uiScale)
+            {
+                cfg.SetCVar(CVars.UiScale, uiScale);
+            }
         }
 
         public static Options Parse(string[] args)
