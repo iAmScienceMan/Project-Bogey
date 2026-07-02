@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Numerics;
 using Bogey.Logging;
 using Bogey.Renderer.Camera;
@@ -42,6 +43,7 @@ public sealed class TacticalWindow : IDisposable, IAppControl
     private readonly IConfigurationManager _cfg;
     private readonly IChangelogManager _changelog;
     private readonly SimBootFactory _sessionFactory;
+    private readonly SimConsoleContext _consoleContext = new();
     private readonly Dictionary<string, Vector2> _pendingOrders = new(StringComparer.Ordinal);
 
     private IWindow? _window;
@@ -129,7 +131,7 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         _entitySprites = EntitySprites.Load(_gl, _options.SpritesPath);
         _text = new TextBatch(_gl, _font);
 
-        _console = new DevConsole(Logger.LogManager, new object[] { this, _cfg });
+        _console = new DevConsole(Logger.LogManager, new object[] { this, _cfg, _consoleContext });
 
         _mainMenu = new MainMenuScreen(_cfg, _changelog);
         _mainMenu.OnDeploy += Deploy;
@@ -258,9 +260,11 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         SimBoot boot = _sessionFactory(_cfg);
         _session = boot.Session;
         _debugOverlay = boot.Overlay;
+        _consoleContext.Session = _session;
+        _consoleContext.Overlay = _debugOverlay;
         _map = new TacticalMapRenderer();
         _camera = new Camera2D(LogicalSize(), Vector2.Zero, _cfg.GetCVar(CVars.RenderZoom));
-        _hud = new TacticalHud(_session, _debugOverlay, Recenter);
+        _hud = new TacticalHud(_session, _debugOverlay, Recenter, _console.RunCommand);
 
         SimSpeed speed = _cfg.GetCVar(CVars.GameStartPaused)
             ? SimSpeed.Paused
@@ -437,9 +441,13 @@ public sealed class TacticalWindow : IDisposable, IAppControl
 
         if (button == MouseButton.Right)
         {
-            if (_hud!.HitTestOpaque(px) is null)
+            if (_hud!.HitTestOpaque(px) is null && _debugOverlay is not null)
             {
-                _debugOverlay?.HandleClick(px, _camera!);
+                if (_debugOverlay.PickOrPlace(px, _camera!) is { } request)
+                {
+                    _console.RunCommand(string.Create(CultureInfo.InvariantCulture,
+                        $"teleport {request.EntityId} {request.Position.X} {request.Position.Y}"));
+                }
             }
 
             return;
@@ -591,21 +599,25 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         switch (key)
         {
             case Key.Space:
-                _session!.SetSpeed(_session.Speed == SimSpeed.Paused ? SimSpeed.Normal : SimSpeed.Paused);
+                _console.RunCommand(_session!.Speed == SimSpeed.Paused ? "speed normal" : "speed paused");
                 break;
             case Key.Number1:
             case Key.Keypad1:
-                _session!.SetSpeed(SimSpeed.Normal);
+                _console.RunCommand("speed normal");
                 break;
             case Key.Number2:
             case Key.Keypad2:
-                _session!.SetSpeed(SimSpeed.Fast);
+                _console.RunCommand("speed fast");
                 break;
             case Key.C:
                 Recenter();
                 break;
             case Key.G:
-                _debugOverlay?.CycleDisplay();
+                if (_debugOverlay is not null)
+                {
+                    _console.RunCommand("declutter");
+                }
+
                 break;
             case Key.Escape:
             case Key.Q:

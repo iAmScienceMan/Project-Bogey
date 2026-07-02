@@ -59,16 +59,30 @@ public sealed class ConsoleCommandRegistry
     {
         foreach (IConsoleCommand command in InstantiateCommands())
         {
-            if (_commands.ContainsKey(command.Command))
+            if (!TryRegister(command.Command, command))
             {
-                _log.Warning($"Duplicate console command '{command.Command}' ignored ({command.GetType().FullName}).");
                 continue;
             }
 
-            _commands[command.Command] = command;
+            foreach (string alias in command.Aliases)
+            {
+                TryRegister(alias, command);
+            }
         }
 
-        _log.Debug($"Registered {_commands.Count} console command(s).");
+        _log.Debug($"Registered {_commands.Count} console command name(s).");
+    }
+
+    private bool TryRegister(string name, IConsoleCommand command)
+    {
+        if (_commands.ContainsKey(name))
+        {
+            _log.Warning($"Duplicate console command '{name}' ignored ({command.GetType().FullName}).");
+            return false;
+        }
+
+        _commands[name] = command;
+        return true;
     }
 
     private IEnumerable<IConsoleCommand> InstantiateCommands()

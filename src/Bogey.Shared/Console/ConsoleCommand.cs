@@ -1,8 +1,13 @@
+using System;
+using System.Collections.Generic;
+
 namespace Bogey.Shared.Console;
 
 public abstract class ConsoleCommand : IConsoleCommand
 {
     public abstract string Command { get; }
+
+    public virtual IReadOnlyList<string> Aliases => Array.Empty<string>();
 
     public virtual string Description => string.Empty;
 

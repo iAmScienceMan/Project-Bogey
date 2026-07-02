@@ -35,7 +35,7 @@ public sealed class GroundTruthOverlay : IDebugOverlay
 
     public GroundTruthOverlay(SimRuntime sim) => _sim = sim;
 
-    public void CycleDisplay()
+    public string CycleDisplay()
     {
         _mode = _mode switch
         {
@@ -43,29 +43,33 @@ public sealed class GroundTruthOverlay : IDebugOverlay
             DisplayMode.MarkersOnly => DisplayMode.Hidden,
             _ => DisplayMode.LabelsAndMarkers,
         };
+
+        return ModeName(_mode);
     }
 
-    public bool HandleClick(Vector2 screenPx, Camera2D camera)
+    public bool Teleport(int entityId, Vector2 worldPosition) =>
+        _sim.DebugSetPosition(entityId, worldPosition);
+
+    public TeleportRequest? PickOrPlace(Vector2 screenPx, Camera2D camera)
     {
         if (_mode == DisplayMode.Hidden)
         {
-            return false;
+            return null;
         }
 
         if (TryPick(screenPx, camera, out int entityId))
         {
             _selectedEntity = entityId;
-            return true;
+            return null;
         }
 
         if (_selectedEntity is { } selected)
         {
-            _sim.DebugSetPosition(selected, camera.ScreenToWorld(screenPx));
             _selectedEntity = null;
-            return true;
+            return new TeleportRequest(selected, camera.ScreenToWorld(screenPx));
         }
 
-        return false;
+        return null;
     }
 
     public void Draw(PrimitiveBatch prims, TextBatch text, Camera2D camera, Vector2 viewport)
@@ -157,6 +161,13 @@ public sealed class GroundTruthOverlay : IDebugOverlay
             ? entry.Name + id + pos
             : entry.Name + id + " [" + entry.TypeName + "]" + pos;
     }
+
+    private static string ModeName(DisplayMode mode) => mode switch
+    {
+        DisplayMode.LabelsAndMarkers => "labels and markers",
+        DisplayMode.MarkersOnly => "markers only",
+        _ => "hidden",
+    };
 
     private static Rgba ColorFor(FactionType faction) => faction switch
     {

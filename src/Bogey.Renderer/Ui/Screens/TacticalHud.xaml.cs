@@ -11,20 +11,22 @@ namespace Bogey.Renderer.Ui.Screens;
 public sealed partial class TacticalHud : Control
 {
     private readonly ISimSession _session;
+    private readonly Action<string> _runCommand;
     private readonly bool _debug;
 
-    public TacticalHud(ISimSession session, IDebugOverlay? debugOverlay, Action recenter)
+    public TacticalHud(ISimSession session, IDebugOverlay? debugOverlay, Action recenter, Action<string> runCommand)
     {
         _session = session;
+        _runCommand = runCommand;
         _debug = debugOverlay is not null;
 
         BogeyXaml.Load(this);
 
         PauseButton.OnPressed += TogglePause;
-        NormalButton.OnPressed += () => _session.SetSpeed(SimSpeed.Normal);
-        FastButton.OnPressed += () => _session.SetSpeed(SimSpeed.Fast);
+        NormalButton.OnPressed += () => _runCommand("speed normal");
+        FastButton.OnPressed += () => _runCommand("speed fast");
         RecenterButton.OnPressed += () => recenter();
-        DeclutterButton.OnPressed += () => debugOverlay?.CycleDisplay();
+        DeclutterButton.OnPressed += () => _runCommand("declutter");
 
         DebugPanel.Visible = _debug;
     }
@@ -62,7 +64,7 @@ public sealed partial class TacticalHud : Control
     }
 
     private void TogglePause()
-        => _session.SetSpeed(_session.Speed == SimSpeed.Paused ? SimSpeed.Normal : SimSpeed.Paused);
+        => _runCommand(_session.Speed == SimSpeed.Paused ? "speed normal" : "speed paused");
 
     private static string SpeedLabelText(SimSpeed speed) => speed switch
     {

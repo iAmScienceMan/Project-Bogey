@@ -62,6 +62,22 @@ public sealed class DevConsole : Control
 
     public bool IsOpen { get; private set; }
 
+    public void RunCommand(string commandLine)
+    {
+        if (string.IsNullOrWhiteSpace(commandLine))
+        {
+            return;
+        }
+
+        AddLine(new[]
+        {
+            new Run(Prompt, PromptColor),
+            new Run(commandLine, NormalColor),
+        });
+
+        _registry.Execute(commandLine, _shell);
+    }
+
     public void Toggle()
     {
         IsOpen = !IsOpen;
@@ -331,19 +347,13 @@ public sealed class DevConsole : Control
             return;
         }
 
-        AddLine(new[]
-        {
-            new Run(Prompt, PromptColor),
-            new Run(text, NormalColor),
-        });
-
         if (_history.Count == 0 || !string.Equals(_history[^1], text, StringComparison.Ordinal))
         {
             _history.Add(text);
         }
 
         _historyIndex = _history.Count;
-        _registry.Execute(text, _shell);
+        RunCommand(text);
     }
 
     private void RecallHistory(int direction)

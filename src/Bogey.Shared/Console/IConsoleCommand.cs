@@ -1,8 +1,12 @@
+using System.Collections.Generic;
+
 namespace Bogey.Shared.Console;
 
 public interface IConsoleCommand
 {
     string Command { get; }
+
+    IReadOnlyList<string> Aliases { get; }
 
     string Description { get; }
 
