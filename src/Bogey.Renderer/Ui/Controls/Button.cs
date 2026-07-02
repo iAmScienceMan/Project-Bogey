@@ -15,6 +15,12 @@ public sealed class Button : Control
 
     public string? Text { get; set; }
 
+    public float FontSize { get; set; } = UiTheme.FontPx;
+
+    public float MinWidth { get; set; }
+
+    public bool Negative { get; set; }
+
     public string? Icon { get; set; }
 
     public string? Hotkey { get; set; }
@@ -62,16 +68,16 @@ public sealed class Button : Control
     {
         if (!IconMode)
         {
-            float textWidth = TextBatch.Measure(Text ?? string.Empty, UiTheme.FontPx) + (HorizontalPadding * 2f);
-            float textHeight = UiTheme.FontPx + (VerticalPadding * 2f);
-            return new Vector2(MathF.Max(textWidth, textHeight), textHeight);
+            float textWidth = TextBatch.Measure(Text ?? string.Empty, FontSize) + (HorizontalPadding * 2f);
+            float textHeight = FontSize + (VerticalPadding * 2f);
+            return new Vector2(MathF.Max(MathF.Max(textWidth, textHeight), MinWidth), textHeight);
         }
 
         float hotkeyWidth = Hotkey is null ? 0f : TextBatch.Measure(Hotkey, UiTheme.HotkeyFontPx);
         float contentWidth = MathF.Max(IconSlotSize, hotkeyWidth) + (HorizontalPadding * 2f);
         float hotkeyBlock = Hotkey is null ? 0f : IconToHotkeyGap + UiTheme.HotkeyFontPx;
         float height = IconSlotSize + hotkeyBlock + (VerticalPadding * 2f);
-        return new Vector2(MathF.Max(contentWidth, height), height);
+        return new Vector2(MathF.Max(MathF.Max(contentWidth, height), MinWidth), height);
     }
 
     public override Button? HitTest(Vector2 point)
@@ -87,8 +93,8 @@ public sealed class Button : Control
         Rgba background = Disabled ? UiTheme.ButtonDisabled
             : IsPressed ? UiTheme.ButtonPressed
             : Active ? UiTheme.ButtonActive
-            : IsHovered ? UiTheme.ButtonHover
-            : UiTheme.ButtonBackground;
+            : IsHovered ? (Negative ? UiTheme.NegativeHover : UiTheme.ButtonHover)
+            : Negative ? UiTheme.Negative : UiTheme.ButtonBackground;
 
         prims.FilledQuad(Bounds.Min, Bounds.Max, background);
         UiDraw.Box(prims, Bounds, Active ? UiTheme.ActiveBorder : UiTheme.Border);
@@ -106,10 +112,10 @@ public sealed class Button : Control
     private void DrawCenteredText(TextBatch text)
     {
         string label = Text ?? string.Empty;
-        float width = TextBatch.Measure(label, UiTheme.FontPx);
+        float width = TextBatch.Measure(label, FontSize);
         float x = Bounds.X + ((Bounds.W - width) * 0.5f);
-        float y = Bounds.Y + ((Bounds.H - UiTheme.FontPx) * 0.5f);
-        text.Text(new Vector2(x, y), UiTheme.FontPx, UiTheme.Text, label);
+        float y = Bounds.Y + ((Bounds.H - FontSize) * 0.5f);
+        text.Text(new Vector2(x, y), FontSize, UiTheme.Text, label);
     }
 
     private void DrawIconAndHotkey(PrimitiveBatch prims, TextBatch text)

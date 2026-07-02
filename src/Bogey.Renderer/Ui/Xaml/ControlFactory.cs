@@ -11,8 +11,10 @@ internal static class ControlFactory
         ["Control"] = () => new Control(),
         ["BoxContainer"] = () => new BoxContainer(),
         ["PanelContainer"] = () => new PanelContainer(),
+        ["GridContainer"] = () => new GridContainer(),
         ["Button"] = () => new Button(),
         ["Label"] = () => new Label(),
+        ["LineEdit"] = () => new LineEdit(),
         ["Tooltip"] = () => new Tooltip(),
     };
 

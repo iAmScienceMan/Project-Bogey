@@ -19,7 +19,7 @@ public sealed class SimRuntime
     private readonly SimClock _clock = new();
     private readonly SystemManager _systems = new();
     private readonly TrackingSystem _tracking = new();
-    private readonly ISawmill _log;
+    private readonly ILogbook _log;
 
     public SimRuntime(IEnumerable<PrototypeDefinition> prototypes, int seed, SimConfig? config = null,
         ILogManager? logManager = null)
@@ -27,7 +27,7 @@ public sealed class SimRuntime
         Random rng = new(seed);
         SimConfig effectiveConfig = config ?? new SimConfig();
         ILogManager log = logManager ?? Logger.LogManager;
-        _log = log.GetSawmill("sim.runtime");
+        _log = log.GetLogbook("sim.runtime");
 
         _systems
             .AddService(_entities)

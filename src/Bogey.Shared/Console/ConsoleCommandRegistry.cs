@@ -11,11 +11,13 @@ public sealed class ConsoleCommandRegistry
     private const string AssemblyPrefix = "Bogey.";
 
     private readonly Dictionary<string, IConsoleCommand> _commands = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ISawmill _log;
+    private readonly ILogbook _log;
+    private readonly IReadOnlyList<object> _services;
 
-    public ConsoleCommandRegistry(ISawmill log)
+    public ConsoleCommandRegistry(ILogbook log, IReadOnlyList<object>? services = null)
     {
         _log = log;
+        _services = services ?? Array.Empty<object>();
         Discover();
     }
 
@@ -73,7 +75,15 @@ public sealed class ConsoleCommandRegistry
     {
         foreach (Type type in CommandTypes())
         {
-            IConsoleCommand? command = null;
+            if (type.GetConstructor(Type.EmptyTypes) is null)
+            {
+                _log.Warning(
+                    $"Console command {type.FullName} has no parameterless constructor and was skipped. " +
+                    "Declare dependencies as [Dependency] fields instead.");
+                continue;
+            }
+
+            IConsoleCommand? command;
             try
             {
                 command = (IConsoleCommand?)Activator.CreateInstance(type);
@@ -81,13 +91,44 @@ public sealed class ConsoleCommandRegistry
             catch (Exception ex)
             {
                 _log.Error($"Failed to instantiate console command {type.FullName}: {ex.Message}");
+                continue;
             }
 
-            if (command is not null)
+            if (command is not null && Inject(command))
             {
                 yield return command;
             }
         }
+    }
+
+    private bool Inject(IConsoleCommand command)
+    {
+        for (Type? type = command.GetType(); type is not null && type != typeof(object); type = type.BaseType)
+        {
+            FieldInfo[] fields = type.GetFields(
+                BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.DeclaredOnly);
+
+            foreach (FieldInfo field in fields)
+            {
+                if (field.GetCustomAttribute<DependencyAttribute>() is null)
+                {
+                    continue;
+                }
+
+                object? service = _services.FirstOrDefault(candidate => field.FieldType.IsInstanceOfType(candidate));
+                if (service is null)
+                {
+                    _log.Error(
+                        $"Console command {command.GetType().Name} depends on {field.FieldType.Name}, " +
+                        "but no such service is registered; command skipped.");
+                    return false;
+                }
+
+                field.SetValue(command, service);
+            }
+        }
+
+        return true;
     }
 
     private IEnumerable<Type> CommandTypes()
@@ -107,8 +148,7 @@ public sealed class ConsoleCommandRegistry
             foreach (Type type in types)
             {
                 if (type is { IsAbstract: false, IsInterface: false }
-                    && typeof(IConsoleCommand).IsAssignableFrom(type)
-                    && type.GetConstructor(Type.EmptyTypes) is not null)
+                    && typeof(IConsoleCommand).IsAssignableFrom(type))
                 {
                     yield return type;
                 }

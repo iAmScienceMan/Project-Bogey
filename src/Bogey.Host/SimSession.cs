@@ -9,21 +9,22 @@ namespace Bogey.Host;
 
 public sealed class SimSession : ISimSession
 {
-    private const double NormalTicksPerSecond = 1.0;
-    private const double FastTicksPerSecond = 10.0;
-
     private const int MaxStepsPerFrame = 12;
 
     private readonly SimRuntime _sim;
+    private readonly double _normalTicksPerSecond;
+    private readonly double _fastTicksPerSecond;
     private readonly Queue<SimCommand> _commands = new();
     private readonly object _gate = new();
 
     private double _accumulator;
     private SimSpeed _speed = SimSpeed.Normal;
 
-    public SimSession(SimRuntime sim)
+    public SimSession(SimRuntime sim, double normalTicksPerSecond = 1.0, double fastTicksPerSecond = 10.0)
     {
         _sim = sim;
+        _normalTicksPerSecond = normalTicksPerSecond > 0 ? normalTicksPerSecond : 1.0;
+        _fastTicksPerSecond = fastTicksPerSecond > 0 ? fastTicksPerSecond : 10.0;
 
         Current = _sim.PublishSnapshot();
     }
@@ -103,11 +104,11 @@ public sealed class SimSession : ISimSession
         }
     }
 
-    private static double TicksPerSecond(SimSpeed speed) => speed switch
+    private double TicksPerSecond(SimSpeed speed) => speed switch
     {
         SimSpeed.Paused => 0.0,
-        SimSpeed.Normal => NormalTicksPerSecond,
-        SimSpeed.Fast => FastTicksPerSecond,
-        _ => NormalTicksPerSecond,
+        SimSpeed.Normal => _normalTicksPerSecond,
+        SimSpeed.Fast => _fastTicksPerSecond,
+        _ => _normalTicksPerSecond,
     };
 }

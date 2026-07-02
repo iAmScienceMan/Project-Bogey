@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 using System.Reflection;
-using Bogey.View;
+using Bogey.View.Presentation;
 using NUnit.Framework;
 
 namespace Bogey.Tests;
@@ -12,7 +12,7 @@ public sealed class ViewBoundaryTests
     [Test]
     public void ViewAssembly_DoesNotReferenceSimAssembly()
     {
-        Assembly view = typeof(TrackPictureRenderer).Assembly;
+        Assembly view = typeof(TrackPresentation).Assembly;
 
         bool referencesSim = view.GetReferencedAssemblies()
             .Any(name => string.Equals(name.Name, "Bogey.Sim", StringComparison.Ordinal));
@@ -24,7 +24,7 @@ public sealed class ViewBoundaryTests
     [Test]
     public void ViewAssembly_ReferencesSharedAssembly()
     {
-        Assembly view = typeof(TrackPictureRenderer).Assembly;
+        Assembly view = typeof(TrackPresentation).Assembly;
 
         bool referencesShared = view.GetReferencedAssemblies()
             .Any(name => string.Equals(name.Name, "Bogey.Shared", StringComparison.Ordinal));

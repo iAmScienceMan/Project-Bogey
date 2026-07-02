@@ -1,0 +1,3 @@
+IosevkaTerm.ttc is "Iosevka Term" by Belleve Invis, licensed under the
+SIL Open Font License 1.1 (https://github.com/be5invis/Iosevka).
+Full license text: https://openfontlicense.org

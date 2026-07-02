@@ -11,7 +11,10 @@ using Bogey.Renderer.Ui;
 using Bogey.Renderer.Ui.Console;
 using Bogey.Renderer.Ui.Controls;
 using Bogey.Renderer.Ui.Screens;
+using Bogey.Shared.Changelog;
 using Bogey.Shared.Commands;
+using Bogey.Shared.Configuration;
+using Bogey.Shared.Console;
 using Bogey.Shared.Tracks;
 using Silk.NET.Input;
 using Silk.NET.Maths;
@@ -21,15 +24,24 @@ using Button = Bogey.Renderer.Ui.Controls.Button;
 
 namespace Bogey.Renderer.App;
 
-public sealed class TacticalWindow : IDisposable
+public sealed class TacticalWindow : IDisposable, IAppControl
 {
     private const float ClickThresholdPx = 5f;
     private const float UnitPickRadiusPx = 16f;
     private const float OrderArriveKm = 2f;
 
+    private enum Screen
+    {
+        MainMenu,
+        Options,
+        Changelog,
+        Tactical,
+    }
+
     private readonly RendererOptions _options;
-    private readonly ISimSession _session;
-    private readonly IDebugOverlay? _debugOverlay;
+    private readonly IConfigurationManager _cfg;
+    private readonly IChangelogManager _changelog;
+    private readonly SimBootFactory _sessionFactory;
     private readonly Dictionary<string, Vector2> _pendingOrders = new(StringComparer.Ordinal);
 
     private IWindow? _window;
@@ -39,11 +51,19 @@ public sealed class TacticalWindow : IDisposable
     private SpriteBatch _sprites = null!;
     private EntitySprites _entitySprites = null!;
     private TextBatch _text = null!;
-    private BitmapFont _font = null!;
-    private TacticalMapRenderer _map = null!;
-    private Camera2D _camera = null!;
-    private TacticalHud _hud = null!;
+    private IFont _font = null!;
     private DevConsole _console = null!;
+    private MainMenuScreen _mainMenu = null!;
+    private OptionsScreen _optionsScreen = null!;
+    private ChangelogScreen _changelogScreen = null!;
+
+    private ISimSession? _session;
+    private IDebugOverlay? _debugOverlay;
+    private TacticalMapRenderer? _map;
+    private Camera2D? _camera;
+    private TacticalHud? _hud;
+
+    private Screen _screen = Screen.MainMenu;
 
     private Vector2 _lastMousePx;
     private Vector2 _leftDownPx;
@@ -52,22 +72,28 @@ public sealed class TacticalWindow : IDisposable
     private bool _uiCaptured;
     private Button? _pressedButton;
     private Button? _hoveredButton;
+    private LineEdit? _focused;
     private string? _selectedUnit;
 
-    public TacticalWindow(RendererOptions options, ISimSession session, IDebugOverlay? debugOverlay = null)
+    public TacticalWindow(
+        RendererOptions options,
+        IConfigurationManager cfg,
+        IChangelogManager changelog,
+        SimBootFactory sessionFactory)
     {
         _options = options;
-        _session = session;
-        _debugOverlay = debugOverlay;
+        _cfg = cfg;
+        _changelog = changelog;
+        _sessionFactory = sessionFactory;
     }
 
     public void Run()
     {
         WindowOptions windowOptions = WindowOptions.Default with
         {
-            Size = new Vector2D<int>(_options.Width, _options.Height),
+            Size = new Vector2D<int>(_cfg.GetCVar(CVars.RenderWidth), _cfg.GetCVar(CVars.RenderHeight)),
             Title = _options.Title,
-            VSync = true,
+            VSync = _cfg.GetCVar(CVars.RenderVsync),
             API = new GraphicsAPI(
                 ContextAPI.OpenGL,
                 ContextProfile.Core,
@@ -85,6 +111,8 @@ public sealed class TacticalWindow : IDisposable
 
     public void Dispose() => _window?.Dispose();
 
+    public void Quit() => _window?.Close();
+
     private void OnLoad()
     {
         IWindow window = _window ?? throw new InvalidOperationException("Window is not initialized.");
@@ -95,18 +123,29 @@ public sealed class TacticalWindow : IDisposable
         _gl.Enable(EnableCap.Blend);
         _gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 
-        _font = new BitmapFont(_gl);
+        _font = new FreeTypeFont(_gl, _cfg.GetCVar(CVars.RenderFontPath));
         _prims = new PrimitiveBatch(_gl);
         _sprites = new SpriteBatch(_gl);
         _entitySprites = EntitySprites.Load(_gl, _options.SpritesPath);
         _text = new TextBatch(_gl, _font);
-        _map = new TacticalMapRenderer();
 
-        Vector2 framebuffer = Framebuffer();
-        _camera = new Camera2D(framebuffer, Vector2.Zero, _options.InitialZoomPxPerKm);
+        _console = new DevConsole(Logger.LogManager, new object[] { this, _cfg });
 
-        _hud = new TacticalHud(_session, _debugOverlay, Recenter);
-        _console = new DevConsole(Logger.LogManager);
+        _mainMenu = new MainMenuScreen(_cfg, _changelog);
+        _mainMenu.OnDeploy += Deploy;
+        _mainMenu.OnChangelog += ShowChangelog;
+        _mainMenu.OnOptions += ShowOptions;
+        _mainMenu.OnQuit += () => _window?.Close();
+
+        _optionsScreen = new OptionsScreen(_cfg);
+        _optionsScreen.OnBack += ShowMainMenu;
+
+        _changelogScreen = new ChangelogScreen();
+        _changelogScreen.OnBack += ShowMainMenu;
+
+        _cfg.OnValueChanged(CVars.RenderVsync, ApplyVsync);
+        _cfg.OnValueChanged(CVars.RenderWidth, ApplyWidth);
+        _cfg.OnValueChanged(CVars.RenderHeight, ApplyHeight);
 
         foreach (IMouse mouse in _input.Mice)
         {
@@ -125,24 +164,19 @@ public sealed class TacticalWindow : IDisposable
 
     private void OnRender(double deltaSeconds)
     {
-        _session.Advance(deltaSeconds);
-        PruneArrivedOrders();
-
-        Vector2 viewport = Framebuffer();
-        _camera.ResizeViewport(viewport);
+        Vector2 viewport = LogicalSize();
+        TextBatch.PixelScale = Framebuffer().X / viewport.X;
 
         _gl.Clear((uint)ClearBufferMask.ColorBufferBit);
 
-        SetLayer(RenderLayer.World);
-        _map.Draw(_session, _camera, _prims, _sprites, _entitySprites, _text, (float)deltaSeconds, _selectedUnit, _pendingOrders);
-        _debugOverlay?.Draw(_prims, _text, _camera, viewport);
-
-        SetLayer(RenderLayer.Ui);
-        _hud.SelectedUnit = _selectedUnit;
-        _hud.HoveredButton = _hoveredButton;
-        _hud.FrameUpdate((float)deltaSeconds);
-        _hud.Arrange(new UiRect(0f, 0f, viewport.X, viewport.Y));
-        _hud.Draw(_prims, _text);
+        if (_screen == Screen.Tactical)
+        {
+            RenderTactical(viewport, (float)deltaSeconds);
+        }
+        else
+        {
+            RenderMenu(viewport, (float)deltaSeconds);
+        }
 
         SetLayer(RenderLayer.Overlay);
         _console.FrameUpdate((float)deltaSeconds);
@@ -151,6 +185,47 @@ public sealed class TacticalWindow : IDisposable
 
         FlushLayered(viewport);
     }
+
+    private void RenderTactical(Vector2 viewport, float dt)
+    {
+        _session!.Advance(dt);
+        PruneArrivedOrders();
+        _camera!.ResizeViewport(viewport);
+
+        SetLayer(RenderLayer.World);
+        _map!.Draw(_session, _camera, _prims, _sprites, _entitySprites, _text, dt, _selectedUnit, _pendingOrders);
+        _debugOverlay?.Draw(_prims, _text, _camera, viewport);
+
+        SetLayer(RenderLayer.Ui);
+        _hud!.SelectedUnit = _selectedUnit;
+        _hud.HoveredButton = _hoveredButton;
+        _hud.FrameUpdate(dt);
+        _hud.Arrange(new UiRect(0f, 0f, viewport.X, viewport.Y));
+        _hud.Draw(_prims, _text);
+    }
+
+    private void RenderMenu(Vector2 viewport, float dt)
+    {
+        Control screen = _screen switch
+        {
+            Screen.Options => _optionsScreen,
+            Screen.Changelog => _changelogScreen,
+            _ => _mainMenu,
+        };
+
+        SetLayer(RenderLayer.Ui);
+        screen.FrameUpdate(dt);
+        screen.Arrange(new UiRect(0f, 0f, viewport.X, viewport.Y));
+        screen.Draw(_prims, _text);
+    }
+
+    private Control ActiveRoot => _screen switch
+    {
+        Screen.Options => _optionsScreen,
+        Screen.Changelog => _changelogScreen,
+        Screen.MainMenu => _mainMenu,
+        _ => _hud!,
+    };
 
     private void SetLayer(RenderLayer layer)
     {
@@ -173,10 +248,91 @@ public sealed class TacticalWindow : IDisposable
         }
     }
 
+    private void Deploy()
+    {
+        if (_screen == Screen.Tactical)
+        {
+            return;
+        }
+
+        SimBoot boot = _sessionFactory(_cfg);
+        _session = boot.Session;
+        _debugOverlay = boot.Overlay;
+        _map = new TacticalMapRenderer();
+        _camera = new Camera2D(LogicalSize(), Vector2.Zero, _cfg.GetCVar(CVars.RenderZoom));
+        _hud = new TacticalHud(_session, _debugOverlay, Recenter);
+
+        SimSpeed speed = _cfg.GetCVar(CVars.GameStartPaused)
+            ? SimSpeed.Paused
+            : SpeedFromInt(_cfg.GetCVar(CVars.GameDefaultSpeed));
+        _session.SetSpeed(speed);
+        Recenter();
+
+        ClearInteraction();
+        _selectedUnit = null;
+        _pendingOrders.Clear();
+        _screen = Screen.Tactical;
+    }
+
+    private void ShowOptions()
+    {
+        _optionsScreen.Refresh();
+        ClearInteraction();
+        _screen = Screen.Options;
+    }
+
+    private void ShowChangelog()
+    {
+        _changelogScreen.Populate(_changelog);
+        _changelog.MarkAllRead();
+        _mainMenu.RefreshChangelogButton();
+        ClearInteraction();
+        _screen = Screen.Changelog;
+    }
+
+    private void ShowMainMenu()
+    {
+        ClearInteraction();
+        _screen = Screen.MainMenu;
+    }
+
+    private void MenuEscape()
+    {
+        if (_screen is Screen.Options or Screen.Changelog)
+        {
+            ShowMainMenu();
+        }
+        else
+        {
+            _window?.Close();
+        }
+    }
+
+    private void ClearInteraction()
+    {
+        _focused?.Blur();
+        _focused = null;
+
+        if (_hoveredButton is not null)
+        {
+            _hoveredButton.IsHovered = false;
+            _hoveredButton = null;
+        }
+
+        if (_pressedButton is not null)
+        {
+            _pressedButton.IsPressed = false;
+            _pressedButton = null;
+        }
+
+        _uiCaptured = false;
+        _leftDown = false;
+        _dragged = false;
+    }
 
     private void PruneArrivedOrders()
     {
-        TrackPictureSnapshot? current = _session.Current;
+        TrackPictureSnapshot? current = _session?.Current;
         if (current is null || _pendingOrders.Count == 0)
         {
             return;
@@ -207,19 +363,20 @@ public sealed class TacticalWindow : IDisposable
 
     private void OnMouseDown(IMouse mouse, MouseButton button)
     {
-        if (_console.IsOpen)
+        if (_console.IsOpen || button != MouseButton.Left)
         {
             return;
         }
 
-        if (button != MouseButton.Left)
+        Vector2 px = ToLogical(mouse.Position);
+
+        if (_screen != Screen.Tactical)
         {
+            MenuMouseDown(px);
             return;
         }
 
-        Vector2 px = ToFramebuffer(mouse.Position);
-
-        Control? overUi = _hud.HitTestOpaque(px);
+        Control? overUi = _hud!.HitTestOpaque(px);
         if (overUi is not null)
         {
             _uiCaptured = true;
@@ -239,6 +396,26 @@ public sealed class TacticalWindow : IDisposable
         _lastMousePx = px;
     }
 
+    private void MenuMouseDown(Vector2 px)
+    {
+        _uiCaptured = true;
+        Control? hit = ActiveRoot.HitTestOpaque(px);
+
+        LineEdit? newFocus = hit as LineEdit;
+        if (!ReferenceEquals(newFocus, _focused))
+        {
+            _focused?.Blur();
+            _focused = newFocus;
+            _focused?.Focus();
+        }
+
+        if (hit is Button button)
+        {
+            _pressedButton = button;
+            button.IsPressed = true;
+        }
+    }
+
     private void OnMouseUp(IMouse mouse, MouseButton button)
     {
         if (_console.IsOpen)
@@ -246,13 +423,23 @@ public sealed class TacticalWindow : IDisposable
             return;
         }
 
-        Vector2 px = ToFramebuffer(mouse.Position);
+        Vector2 px = ToLogical(mouse.Position);
+
+        if (_screen != Screen.Tactical)
+        {
+            if (button == MouseButton.Left)
+            {
+                MenuMouseUp(px);
+            }
+
+            return;
+        }
 
         if (button == MouseButton.Right)
         {
-            if (_hud.HitTestOpaque(px) is null)
+            if (_hud!.HitTestOpaque(px) is null)
             {
-                _debugOverlay?.HandleClick(px, _camera);
+                _debugOverlay?.HandleClick(px, _camera!);
             }
 
             return;
@@ -268,7 +455,7 @@ public sealed class TacticalWindow : IDisposable
             if (_pressedButton is not null)
             {
                 _pressedButton.IsPressed = false;
-                if (ReferenceEquals(_hud.HitTestOpaque(px), _pressedButton))
+                if (ReferenceEquals(_hud!.HitTestOpaque(px), _pressedButton))
                 {
                     _pressedButton.Press();
                 }
@@ -287,12 +474,28 @@ public sealed class TacticalWindow : IDisposable
         }
     }
 
+    private void MenuMouseUp(Vector2 px)
+    {
+        if (_pressedButton is not null)
+        {
+            _pressedButton.IsPressed = false;
+            if (ReferenceEquals(ActiveRoot.HitTestOpaque(px), _pressedButton))
+            {
+                _pressedButton.Press();
+            }
+
+            _pressedButton = null;
+        }
+
+        _uiCaptured = false;
+    }
+
     private void OnMouseMove(IMouse mouse, Vector2 position)
     {
-        Vector2 px = ToFramebuffer(position);
+        Vector2 px = ToLogical(position);
         UpdateHover(px);
 
-        if (_leftDown)
+        if (_screen == Screen.Tactical && _leftDown)
         {
             if (Vector2.Distance(px, _leftDownPx) > ClickThresholdPx)
             {
@@ -301,7 +504,7 @@ public sealed class TacticalWindow : IDisposable
 
             if (_dragged)
             {
-                _camera.Pan(px - _lastMousePx);
+                _camera!.Pan(px - _lastMousePx);
             }
         }
 
@@ -321,19 +524,24 @@ public sealed class TacticalWindow : IDisposable
             return;
         }
 
-        Vector2 px = ToFramebuffer(mouse.Position);
-        if (_hud.HitTestOpaque(px) is not null)
+        if (_screen != Screen.Tactical)
+        {
+            return;
+        }
+
+        Vector2 px = ToLogical(mouse.Position);
+        if (_hud!.HitTestOpaque(px) is not null)
         {
             return;
         }
 
         float factor = MathF.Pow(1.15f, wheel.Y);
-        _camera.ZoomAt(factor, px);
+        _camera!.ZoomAt(factor, px);
     }
 
     private void UpdateHover(Vector2 px)
     {
-        Button? over = _hud.HitTest(px);
+        Button? over = ActiveRoot.HitTest(px);
         if (!ReferenceEquals(_hoveredButton, over))
         {
             if (_hoveredButton is not null)
@@ -368,24 +576,35 @@ public sealed class TacticalWindow : IDisposable
             return;
         }
 
+        if (_screen != Screen.Tactical)
+        {
+            if (key == Key.Escape)
+            {
+                MenuEscape();
+                return;
+            }
+
+            _focused?.HandleKey(key);
+            return;
+        }
+
         switch (key)
         {
             case Key.Space:
-                _session.SetSpeed(_session.Speed == SimSpeed.Paused ? SimSpeed.Normal : SimSpeed.Paused);
+                _session!.SetSpeed(_session.Speed == SimSpeed.Paused ? SimSpeed.Normal : SimSpeed.Paused);
                 break;
             case Key.Number1:
             case Key.Keypad1:
-                _session.SetSpeed(SimSpeed.Normal);
+                _session!.SetSpeed(SimSpeed.Normal);
                 break;
             case Key.Number2:
             case Key.Keypad2:
-                _session.SetSpeed(SimSpeed.Fast);
+                _session!.SetSpeed(SimSpeed.Fast);
                 break;
             case Key.C:
                 Recenter();
                 break;
             case Key.G:
-
                 _debugOverlay?.CycleDisplay();
                 break;
             case Key.Escape:
@@ -400,6 +619,12 @@ public sealed class TacticalWindow : IDisposable
         if (_console.IsOpen)
         {
             _console.HandleChar(c);
+            return;
+        }
+
+        if (_screen != Screen.Tactical)
+        {
+            _focused?.Insert(c);
         }
     }
 
@@ -417,14 +642,19 @@ public sealed class TacticalWindow : IDisposable
             return;
         }
 
-        Vector2 destination = _camera.ScreenToWorld(px);
-        _session.Enqueue(new MoveCommand { UnitName = _selectedUnit, Destination = destination });
+        Vector2 destination = _camera!.ScreenToWorld(px);
+        _session!.Enqueue(new MoveCommand { UnitName = _selectedUnit, Destination = destination });
         _pendingOrders[_selectedUnit] = destination;
     }
 
     private void Recenter()
     {
-        TrackPictureSnapshot? current = _session.Current;
+        if (_camera is null)
+        {
+            return;
+        }
+
+        TrackPictureSnapshot? current = _session?.Current;
         if (current is not null && current.OwnUnits.Count > 0)
         {
             _camera.SetCenter(current.OwnUnits[0].Position);
@@ -433,6 +663,11 @@ public sealed class TacticalWindow : IDisposable
 
     private string? PickOwnUnit(Vector2 px)
     {
+        if (_camera is null || _session is null)
+        {
+            return null;
+        }
+
         string? best = null;
         float bestDistance = UnitPickRadiusPx;
 
@@ -450,6 +685,37 @@ public sealed class TacticalWindow : IDisposable
         return best;
     }
 
+    private void ApplyVsync(bool value)
+    {
+        if (_window is not null)
+        {
+            _window.VSync = value;
+        }
+    }
+
+    private void ApplyWidth(int value)
+    {
+        if (_window is not null)
+        {
+            _window.Size = new Vector2D<int>(Math.Max(320, value), _window.Size.Y);
+        }
+    }
+
+    private void ApplyHeight(int value)
+    {
+        if (_window is not null)
+        {
+            _window.Size = new Vector2D<int>(_window.Size.X, Math.Max(240, value));
+        }
+    }
+
+    private static SimSpeed SpeedFromInt(int value) => value switch
+    {
+        0 => SimSpeed.Paused,
+        2 => SimSpeed.Fast,
+        _ => SimSpeed.Normal,
+    };
+
     private void OnFramebufferResize(Vector2D<int> size)
     {
         _gl.Viewport(0, 0, (uint)Math.Max(1, size.X), (uint)Math.Max(1, size.Y));
@@ -466,6 +732,15 @@ public sealed class TacticalWindow : IDisposable
         _gl.Dispose();
     }
 
+    private float UiScale
+    {
+        get
+        {
+            float scale = _cfg.GetCVar(CVars.UiScale);
+            return scale > 0f ? scale : 1f;
+        }
+    }
+
     private Vector2 Framebuffer()
     {
         IWindow window = _window ?? throw new InvalidOperationException("Window is not initialized.");
@@ -473,13 +748,12 @@ public sealed class TacticalWindow : IDisposable
         return new Vector2(Math.Max(1, fb.X), Math.Max(1, fb.Y));
     }
 
-    private Vector2 ToFramebuffer(Vector2 windowPosition)
+    private Vector2 LogicalSize()
     {
         IWindow window = _window ?? throw new InvalidOperationException("Window is not initialized.");
         Vector2D<int> win = window.Size;
-        Vector2D<int> fb = window.FramebufferSize;
-        float sx = win.X > 0 ? (float)fb.X / win.X : 1f;
-        float sy = win.Y > 0 ? (float)fb.Y / win.Y : 1f;
-        return new Vector2(windowPosition.X * sx, windowPosition.Y * sy);
+        return new Vector2(Math.Max(1, win.X) / UiScale, Math.Max(1, win.Y) / UiScale);
     }
+
+    private Vector2 ToLogical(Vector2 windowPosition) => windowPosition / UiScale;
 }

@@ -2,7 +2,7 @@ using System;
 
 namespace Bogey.Logging;
 
-public interface ISawmill
+public interface ILogbook
 {
     string Name { get; }
 

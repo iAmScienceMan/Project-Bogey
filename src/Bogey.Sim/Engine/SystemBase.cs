@@ -7,9 +7,9 @@ public abstract class SystemBase
     [Dependency]
     private readonly ILogManager _logManager = null!;
 
-    private ISawmill? _log;
+    private ILogbook? _log;
 
-    protected ISawmill Log => _log ??= _logManager.GetSawmill("sim." + GetType().Name);
+    protected ILogbook Log => _log ??= _logManager.GetLogbook("sim." + GetType().Name);
 
     public virtual void Initialize()
     {

@@ -1,0 +1,46 @@
+Name: Project Bogey
+Entries:
+- Id: 1
+  Author: iamscienceman
+  Time: '2026-06-18T20:15:00.0000000+00:00'
+  Changes:
+  - Type: Add
+    Message: Added the sprite system so tracks and own units render with real artwork
+- Id: 2
+  Author: iamscienceman
+  Time: '2026-06-22T19:40:00.0000000+00:00'
+  Changes:
+  - Type: Tweak
+    Message: Moved the remaining HUD over to the new UI system
+  - Type: Fix
+    Message: Fixed control layout drifting when the window was resized
+- Id: 3
+  Author: iamscienceman
+  Time: '2026-06-27T18:05:00.0000000+00:00'
+  Changes:
+  - Type: Add
+    Message: Added a logging framework and a developer console
+  - Type: Add
+    Message: Added crash and throwexception commands for testing error handling
+- Id: 4
+  Author: iamscienceman
+  Time: '2026-07-01T21:30:00.0000000+00:00'
+  Changes:
+  - Type: Add
+    Message: Added OUR OWN FreeType based font renderer
+  - Type: Remove
+    Message: Removed the old bitmap font path now that FreeType handles all text
+- Id: 5
+  Author: iamscienceman
+  Time: '2026-07-02T16:00:00.0000000+00:00'
+  Changes:
+  - Type: Add
+    Message: Added a main menu
+  - Type: Add
+    Message: 'Added CVars and settings :D'
+- Id: 6
+  Author: iamscienceman
+  Time: '2026-07-02T17:20:00.0000000+00:00'
+  Changes:
+  - Type: Add
+    Message: Added this changelog

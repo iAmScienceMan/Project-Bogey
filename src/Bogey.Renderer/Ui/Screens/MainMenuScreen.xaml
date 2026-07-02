@@ -1,0 +1,32 @@
+<!-- ReSharper disable All -->
+<Control xmlns="clr-namespace:Bogey.Renderer.Ui.Controls;assembly=Bogey.Renderer">
+
+  <BoxContainer Anchor="Center" Orientation="Vertical" DrawBackground="false" Separation="16">
+
+    <Label Name="TitleLabel" Text="PROJECT BOGEY" FontSize="40" Color="#73D9FF" />
+    <Label Name="SubtitleLabel" Text="fog-of-war tactical sim" FontSize="13" Color="#9EAECC" />
+
+    <PanelContainer>
+      <BoxContainer Orientation="Vertical" DrawBackground="false" Separation="8" Padding="18">
+
+        <GridContainer Columns="2" Separation="10">
+          <Label Text="CALLSIGN" FontSize="14" Color="#CCDBEB" />
+          <LineEdit Name="CallsignEdit" MinWidth="220" FontSize="14" PlaceHolder="your callsign" />
+          <Label Text="SEED" FontSize="14" Color="#CCDBEB" />
+          <LineEdit Name="SeedEdit" MinWidth="220" FontSize="14" Numeric="true" PlaceHolder="scenario seed" />
+        </GridContainer>
+
+        <Button Name="DeployButton" Text="DEPLOY" FontSize="16" MinWidth="280" />
+        <Button Name="ChangelogButton" Text="CHANGELOG" FontSize="16" MinWidth="280" />
+        <Button Name="OptionsButton" Text="OPTIONS" FontSize="16" MinWidth="280" />
+        <Button Name="QuitButton" Text="QUIT" FontSize="16" MinWidth="280" Negative="true" />
+
+      </BoxContainer>
+    </PanelContainer>
+
+  </BoxContainer>
+
+  <Label Name="VersionLabel" Anchor="BottomRight" Margin="0 0 12 10" FontSize="11" Color="#7788AA"
+         Text="build 0.1.0-dev" />
+
+</Control>

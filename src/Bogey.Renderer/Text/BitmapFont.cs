@@ -4,7 +4,8 @@ using Silk.NET.OpenGL;
 
 namespace Bogey.Renderer.Text;
 
-public sealed class BitmapFont : IDisposable
+// Legacy, using IosevkaTerm now. Kept as a dependency-free fallback.
+public sealed class BitmapFont : IFont
 {
     public const int GlyphWidth = 8;
     public const int GlyphHeight = 8;
@@ -47,13 +48,23 @@ public sealed class BitmapFont : IDisposable
         _gl.BindTexture(TextureTarget.Texture2D, _texture);
     }
 
-    
-    public Vector4 Uv(char c)
+    public Glyph GetGlyph(char c, int pixelSize)
+        => new(Uv(c), pixelSize, pixelSize, 0f, pixelSize, pixelSize, c != ' ');
+
+    public float AdvancePx(int pixelSize) => pixelSize;
+
+    public float Ascent(int pixelSize) => pixelSize;
+
+    public float LineHeight(int pixelSize) => pixelSize;
+
+    public void Dispose() => _gl.DeleteTexture(_texture);
+
+    private static Vector4 Uv(char c)
     {
         int index = c;
         if (index < FirstChar || index > LastChar)
         {
-            index = FirstChar; 
+            index = FirstChar;
         }
 
         int glyph = index - FirstChar;
@@ -66,8 +77,6 @@ public sealed class BitmapFont : IDisposable
         float v1 = (float)((row + 1) * GlyphHeight) / AtlasHeight;
         return new Vector4(u0, v0, u1, v1);
     }
-
-    public void Dispose() => _gl.DeleteTexture(_texture);
 
     private static byte[] BuildAtlasPixels()
     {

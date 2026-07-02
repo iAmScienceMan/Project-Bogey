@@ -13,26 +13,26 @@ public sealed class LogManager : ILogManager
     private const LogLevel DefaultLevel = LogLevel.Info;
 #endif
 
-    private readonly Dictionary<string, Sawmill> _sawmills = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Logbook> _logbooks = new(StringComparer.Ordinal);
     private readonly object _gate = new();
-    private readonly Sawmill _root;
+    private readonly Logbook _root;
 
     public LogManager()
     {
-        _root = new Sawmill(RootName, parent: null)
+        _root = new Logbook(RootName, parent: null)
         {
             Level = DefaultLevel,
         };
-        _sawmills[RootName] = _root;
+        _logbooks[RootName] = _root;
     }
 
-    public ISawmill RootSawmill => _root;
+    public ILogbook RootLogbook => _root;
 
-    public ISawmill GetSawmill(string name)
+    public ILogbook GetLogbook(string name)
     {
         if (string.IsNullOrEmpty(name))
         {
-            throw new ArgumentException("Sawmill name must not be empty.", nameof(name));
+            throw new ArgumentException("Logbook name must not be empty.", nameof(name));
         }
 
         lock (_gate)
@@ -43,18 +43,18 @@ public sealed class LogManager : ILogManager
 
     public void AddHandler(ILogHandler handler) => _root.AddHandler(handler);
 
-    private Sawmill GetOrCreate(string name)
+    private Logbook GetOrCreate(string name)
     {
-        if (_sawmills.TryGetValue(name, out Sawmill? existing))
+        if (_logbooks.TryGetValue(name, out Logbook? existing))
         {
             return existing;
         }
 
         int split = name.LastIndexOf('.');
-        Sawmill parent = split < 0 ? _root : GetOrCreate(name[..split]);
+        Logbook parent = split < 0 ? _root : GetOrCreate(name[..split]);
 
-        Sawmill sawmill = new(name, parent);
-        _sawmills[name] = sawmill;
-        return sawmill;
+        Logbook logbook = new(name, parent);
+        _logbooks[name] = logbook;
+        return logbook;
     }
 }

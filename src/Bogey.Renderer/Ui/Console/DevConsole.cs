@@ -13,8 +13,8 @@ namespace Bogey.Renderer.Ui.Console;
 public sealed class DevConsole : Control
 {
     private const float OpenHeightFraction = 0.45f;
-    private const float FontPx = 13f;
-    private const float LineHeight = 16f;
+    private const float FontPx = 14f;
+    private const float LineHeight = 17f;
     private const float Pad = 8f;
     private const float InputHeight = 24f;
     private const float CaretBlinkSeconds = 0.53f;
@@ -25,17 +25,19 @@ public sealed class DevConsole : Control
     private static readonly Rgba InputBackground = new(0.06f, 0.08f, 0.11f, 0.97f);
     private static readonly Rgba BorderColor = new(0.30f, 0.36f, 0.45f, 0.9f);
     private static readonly Rgba CaretColor = new(0.85f, 0.90f, 0.97f);
-    private static readonly Rgba EchoColor = new(0.86f, 0.74f, 0.33f);
+    private static readonly Rgba PromptColor = new(0.86f, 0.74f, 0.33f);
+    private static readonly Rgba NormalColor = new(0.82f, 0.86f, 0.92f);
+    private static readonly Rgba CategoryColor = new(0.50f, 0.62f, 0.72f);
 
-    private static readonly Rgba VerboseColor = new(0.45f, 0.48f, 0.52f);
-    private static readonly Rgba DebugColor = new(0.62f, 0.66f, 0.72f);
-    private static readonly Rgba InfoColor = new(0.80f, 0.85f, 0.92f);
-    private static readonly Rgba WarningColor = new(0.90f, 0.78f, 0.32f);
-    private static readonly Rgba ErrorColor = new(0.90f, 0.36f, 0.33f);
-    private static readonly Rgba FatalColor = new(0.86f, 0.40f, 0.86f);
+    private static readonly Rgba VerboseColor = new(0.55f, 0.58f, 0.62f);
+    private static readonly Rgba DebugColor = new(0.60f, 0.72f, 0.62f);
+    private static readonly Rgba InfoColor = new(0.44f, 0.72f, 0.92f);
+    private static readonly Rgba WarningColor = new(0.92f, 0.78f, 0.30f);
+    private static readonly Rgba ErrorColor = new(0.94f, 0.42f, 0.38f);
+    private static readonly Rgba FatalColor = new(0.90f, 0.44f, 0.90f);
 
     private readonly object _gate = new();
-    private readonly List<ConsoleLine> _lines = new();
+    private readonly List<Run[]> _lines = new();
     private readonly List<string> _history = new();
     private readonly ConsoleCommandRegistry _registry;
     private readonly IConsoleShell _shell;
@@ -49,11 +51,11 @@ public sealed class DevConsole : Control
     private int _lastVisibleRows = 1;
     private int _lastTotalRows;
 
-    public DevConsole(ILogManager logManager)
+    public DevConsole(ILogManager logManager, IReadOnlyList<object> services)
     {
         logManager.AddHandler(new ConsoleLogSink(this));
         _shell = new LocalConsoleShell(this);
-        _registry = new ConsoleCommandRegistry(logManager.GetSawmill("console"));
+        _registry = new ConsoleCommandRegistry(logManager.GetLogbook("console"), services);
 
         WriteLine(LogLevel.Info, "Developer console ready. Type a command and press ENTER. ` to close.");
     }
@@ -73,21 +75,37 @@ public sealed class DevConsole : Control
 
     public void WriteLine(LogLevel level, string message)
     {
-        Rgba color = ColorFor(level);
-        lock (_gate)
+        foreach (string part in message.Split('\n'))
         {
-            foreach (string part in message.Split('\n'))
+            AddLine(new[]
             {
-                _lines.Add(new ConsoleLine(part.TrimEnd('\r'), color));
-            }
+                new Run("[", NormalColor),
+                new Run(Tag(level), ColorFor(level)),
+                new Run("] ", NormalColor),
+                new Run(part.TrimEnd('\r'), NormalColor),
+            });
+        }
+    }
 
-            TrimBuffer();
+    public void WriteLog(LogLevel level, string category, string message)
+    {
+        foreach (string part in message.Split('\n'))
+        {
+            AddLine(new[]
+            {
+                new Run("[", NormalColor),
+                new Run(Tag(level), ColorFor(level)),
+                new Run("] [", NormalColor),
+                new Run(category, CategoryColor),
+                new Run("] ", NormalColor),
+                new Run(part.TrimEnd('\r'), NormalColor),
+            });
         }
     }
 
     public void HandleChar(char c)
     {
-        if (!IsOpen || c == '`' || c < 0x20 || c > 0x7E)
+        if (!IsOpen || c == '`' || c < 0x20 || c == 0x7F)
         {
             return;
         }
@@ -203,19 +221,13 @@ public sealed class DevConsole : Control
 
     private void DrawLog(TextBatch text, UiRect panel, UiRect input)
     {
+        float charWidth = TextBatch.CharWidth(FontPx);
         float logWidth = panel.W - (Pad * 2f);
         float logHeight = input.Y - panel.Y - (Pad * 2f);
-        int maxCols = Math.Max(1, (int)(logWidth / FontPx));
+        int maxCols = Math.Max(1, (int)(logWidth / charWidth));
         int visibleRows = Math.Max(1, (int)(logHeight / LineHeight));
 
-        List<ConsoleLine> rows = new();
-        lock (_gate)
-        {
-            foreach (ConsoleLine line in _lines)
-            {
-                AppendWrapped(rows, line, maxCols);
-            }
-        }
+        List<List<Fragment>> rows = BuildRows(maxCols);
 
         _lastTotalRows = rows.Count;
         _lastVisibleRows = visibleRows;
@@ -224,28 +236,85 @@ public sealed class DevConsole : Control
         _scroll = Math.Clamp(_scroll, 0, maxScroll);
 
         int startRow = Math.Max(0, rows.Count - visibleRows - _scroll);
+        float logX = panel.X + Pad;
         float y = panel.Y + Pad;
 
         for (int i = startRow; i < rows.Count && i < startRow + visibleRows; i++)
         {
-            text.Text(new Vector2(panel.X + Pad, y), FontPx, rows[i].Color, rows[i].Text);
+            foreach (Fragment fragment in rows[i])
+            {
+                text.Text(new Vector2(logX + (fragment.Col * charWidth), y), FontPx, fragment.Color, fragment.Text);
+            }
+
             y += LineHeight;
         }
     }
 
     private void DrawInput(PrimitiveBatch prims, TextBatch text, UiRect input)
     {
+        float charWidth = TextBatch.CharWidth(FontPx);
         float textY = input.Y + ((InputHeight - FontPx) * 0.5f);
-        text.Text(new Vector2(input.X + Pad, textY), FontPx, EchoColor, Prompt);
-        text.Text(new Vector2(input.X + Pad + (Prompt.Length * FontPx), textY), FontPx, InfoColor, _input);
+
+        text.Text(new Vector2(input.X + Pad, textY), FontPx, PromptColor, Prompt);
+        text.Text(new Vector2(input.X + Pad + (Prompt.Length * charWidth), textY), FontPx, NormalColor, _input);
 
         if (_caretVisible)
         {
-            float caretX = input.X + Pad + ((Prompt.Length + _caret) * FontPx);
+            float caretX = input.X + Pad + ((Prompt.Length + _caret) * charWidth);
             prims.FilledQuad(
                 new Vector2(caretX, textY),
                 new Vector2(caretX + 1.5f, textY + FontPx),
                 CaretColor);
+        }
+    }
+
+    private List<List<Fragment>> BuildRows(int maxCols)
+    {
+        List<List<Fragment>> rows = new();
+
+        lock (_gate)
+        {
+            foreach (Run[] line in _lines)
+            {
+                List<Fragment> row = new();
+                int col = 0;
+
+                foreach (Run run in line)
+                {
+                    int i = 0;
+                    while (i < run.Text.Length)
+                    {
+                        if (col >= maxCols)
+                        {
+                            rows.Add(row);
+                            row = new List<Fragment>();
+                            col = 0;
+                        }
+
+                        int take = Math.Min(maxCols - col, run.Text.Length - i);
+                        row.Add(new Fragment(col, run.Text.Substring(i, take), run.Color));
+                        col += take;
+                        i += take;
+                    }
+                }
+
+                rows.Add(row);
+            }
+        }
+
+        return rows;
+    }
+
+    private void AddLine(Run[] runs)
+    {
+        lock (_gate)
+        {
+            _lines.Add(runs);
+            int excess = _lines.Count - MaxLines;
+            if (excess > 0)
+            {
+                _lines.RemoveRange(0, excess);
+            }
         }
     }
 
@@ -262,7 +331,11 @@ public sealed class DevConsole : Control
             return;
         }
 
-        WriteLine(LogLevel.Info, Prompt + text);
+        AddLine(new[]
+        {
+            new Run(Prompt, PromptColor),
+            new Run(text, NormalColor),
+        });
 
         if (_history.Count == 0 || !string.Equals(_history[^1], text, StringComparison.Ordinal))
         {
@@ -270,7 +343,6 @@ public sealed class DevConsole : Control
         }
 
         _historyIndex = _history.Count;
-
         _registry.Execute(text, _shell);
     }
 
@@ -299,30 +371,16 @@ public sealed class DevConsole : Control
         _caretVisible = true;
     }
 
-    private void TrimBuffer()
+    private static string Tag(LogLevel level) => level switch
     {
-        int excess = _lines.Count - MaxLines;
-        if (excess > 0)
-        {
-            _lines.RemoveRange(0, excess);
-        }
-    }
-
-    private static void AppendWrapped(List<ConsoleLine> rows, ConsoleLine line, int maxCols)
-    {
-        string t = line.Text;
-        if (t.Length <= maxCols)
-        {
-            rows.Add(line);
-            return;
-        }
-
-        for (int i = 0; i < t.Length; i += maxCols)
-        {
-            int length = Math.Min(maxCols, t.Length - i);
-            rows.Add(new ConsoleLine(t.Substring(i, length), line.Color));
-        }
-    }
+        LogLevel.Verbose => "VERB",
+        LogLevel.Debug => "DEBG",
+        LogLevel.Info => "INFO",
+        LogLevel.Warning => "WARN",
+        LogLevel.Error => "ERRO",
+        LogLevel.Fatal => "FATL",
+        _ => "????",
+    };
 
     private static Rgba ColorFor(LogLevel level) => level switch
     {
@@ -332,8 +390,10 @@ public sealed class DevConsole : Control
         LogLevel.Warning => WarningColor,
         LogLevel.Error => ErrorColor,
         LogLevel.Fatal => FatalColor,
-        _ => InfoColor,
+        _ => NormalColor,
     };
 
-    private readonly record struct ConsoleLine(string Text, Rgba Color);
+    private readonly record struct Run(string Text, Rgba Color);
+
+    private readonly record struct Fragment(int Col, string Text, Rgba Color);
 }

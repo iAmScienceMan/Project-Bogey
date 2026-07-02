@@ -2,9 +2,9 @@ namespace Bogey.Logging;
 
 public interface ILogManager
 {
-    ISawmill RootSawmill { get; }
+    ILogbook RootLogbook { get; }
 
-    ISawmill GetSawmill(string name);
+    ILogbook GetLogbook(string name);
 
     void AddHandler(ILogHandler handler);
 }

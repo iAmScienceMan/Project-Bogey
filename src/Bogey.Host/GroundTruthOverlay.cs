@@ -152,7 +152,10 @@ public sealed class GroundTruthOverlay : IDebugOverlay
     {
         string pos = string.Create(CultureInfo.InvariantCulture,
             $" ({entry.Position.X:0}, {entry.Position.Y:0})");
-        return entry.TypeName is null ? entry.Name + pos : entry.Name + " [" + entry.TypeName + "]" + pos;
+        string id = string.Create(CultureInfo.InvariantCulture, $" #{entry.EntityId}");
+        return entry.TypeName is null
+            ? entry.Name + id + pos
+            : entry.Name + id + " [" + entry.TypeName + "]" + pos;
     }
 
     private static Rgba ColorFor(FactionType faction) => faction switch

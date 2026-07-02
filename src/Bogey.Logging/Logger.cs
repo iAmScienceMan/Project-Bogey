@@ -32,7 +32,7 @@ public static class Logger
         return manager;
     }
 
-    public static ISawmill GetSawmill(string name) => LogManager.GetSawmill(name);
+    public static ILogbook GetLogbook(string name) => LogManager.GetLogbook(name);
 
-    public static ISawmill Root => LogManager.RootSawmill;
+    public static ILogbook Root => LogManager.RootLogbook;
 }

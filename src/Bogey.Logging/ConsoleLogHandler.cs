@@ -10,7 +10,7 @@ public sealed class ConsoleLogHandler : ILogHandler
     public void Log(in LogMessage message)
     {
         string timestamp = message.Timestamp.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
-        string line = $"[{timestamp}] [{Tag(message.Level)}] {message.SawmillName}: {message.Message}";
+        string line = $"[{timestamp}] [{Tag(message.Level)}] {message.LogbookName}: {message.Message}";
 
         lock (ConsoleGate)
         {

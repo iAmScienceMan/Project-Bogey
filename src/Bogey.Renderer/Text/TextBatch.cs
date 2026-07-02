@@ -41,17 +41,22 @@ public sealed class TextBatch : IDisposable
 
     private readonly GL _gl;
     private readonly Gl.Shader _shader;
-    private readonly BitmapFont _font;
+    private readonly IFont _font;
     private readonly uint _vao;
     private readonly uint _vbo;
     private readonly Dictionary<int, List<float>> _layers = new();
 
     public int Layer { get; set; }
 
-    public TextBatch(GL gl, BitmapFont font)
+    public static IFont? ActiveFont { get; private set; }
+
+    public static float PixelScale { get; set; } = 1f;
+
+    public TextBatch(GL gl, IFont font)
     {
         _gl = gl;
         _font = font;
+        ActiveFont = font;
         _shader = new Gl.Shader(gl, VertexSource, FragmentSource);
 
         _vao = _gl.GenVertexArray();
@@ -72,34 +77,47 @@ public sealed class TextBatch : IDisposable
         _gl.BindVertexArray(0);
     }
 
-    
-    public static float Measure(string text, float pixelSize) => text.Length * pixelSize;
+    public static float Measure(string text, float pixelSize)
+        => text.Length * CharWidth(pixelSize);
 
-    
+    public static float CharWidth(float pixelSize)
+        => ActiveFont is { } font ? font.AdvancePx(Round(pixelSize * PixelScale)) / PixelScale : pixelSize;
+
     public void Text(Vector2 origin, float pixelSize, Rgba color, string text)
     {
+        float scale = PixelScale;
+        float inv = 1f / scale;
+        int size = Round(pixelSize * scale);
+
         List<float> data = Current();
         float penX = origin.X;
+        float baseline = origin.Y + (_font.Ascent(size) * inv);
+
         foreach (char c in text)
         {
-            Vector4 uv = _font.Uv(c);
-            float x0 = penX;
-            float y0 = origin.Y;
-            float x1 = penX + pixelSize;
-            float y1 = origin.Y + pixelSize;
+            Glyph glyph = _font.GetGlyph(c, size);
+            if (glyph.HasPixels)
+            {
+                float x0 = penX + (glyph.BearingLeft * inv);
+                float y0 = baseline - (glyph.BearingTop * inv);
+                float x1 = x0 + (glyph.Width * inv);
+                float y1 = y0 + (glyph.Height * inv);
+                Vector4 uv = glyph.Uv;
 
+                PushVertex(data, x0, y0, uv.X, uv.Y, color);
+                PushVertex(data, x1, y0, uv.Z, uv.Y, color);
+                PushVertex(data, x1, y1, uv.Z, uv.W, color);
 
-            PushVertex(data, x0, y0, uv.X, uv.Y, color);
-            PushVertex(data, x1, y0, uv.Z, uv.Y, color);
-            PushVertex(data, x1, y1, uv.Z, uv.W, color);
+                PushVertex(data, x0, y0, uv.X, uv.Y, color);
+                PushVertex(data, x1, y1, uv.Z, uv.W, color);
+                PushVertex(data, x0, y1, uv.X, uv.W, color);
+            }
 
-            PushVertex(data, x0, y0, uv.X, uv.Y, color);
-            PushVertex(data, x1, y1, uv.Z, uv.W, color);
-            PushVertex(data, x0, y1, uv.X, uv.W, color);
-
-            penX += pixelSize;
+            penX += glyph.Advance * inv;
         }
     }
+
+    private static int Round(float pixelSize) => Math.Max(1, (int)MathF.Round(pixelSize));
 
     public IEnumerable<int> UsedLayers
     {

@@ -35,6 +35,8 @@ public class Control
 
     public void AddChild(Control child) => _children.Add(child);
 
+    public void ClearChildren() => _children.Clear();
+
     
     public virtual Vector2 Measure() => Vector2.Zero;
 
@@ -77,6 +79,25 @@ public class Control
         for (int i = _children.Count - 1; i >= 0; i--)
         {
             Button? hit = _children[i].HitTest(point);
+            if (hit is not null)
+            {
+                return hit;
+            }
+        }
+
+        return null;
+    }
+
+    public virtual Control? HitTestFocusable(Vector2 point)
+    {
+        if (!Visible)
+        {
+            return null;
+        }
+
+        for (int i = _children.Count - 1; i >= 0; i--)
+        {
+            Control? hit = _children[i].HitTestFocusable(point);
             if (hit is not null)
             {
                 return hit;

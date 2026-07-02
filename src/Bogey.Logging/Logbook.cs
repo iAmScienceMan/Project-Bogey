@@ -4,13 +4,13 @@ using System.Globalization;
 
 namespace Bogey.Logging;
 
-public sealed class Sawmill : ISawmill
+public sealed class Logbook : ILogbook
 {
-    private readonly Sawmill? _parent;
+    private readonly Logbook? _parent;
     private readonly List<ILogHandler> _handlers = new();
     private readonly object _gate = new();
 
-    public Sawmill(string name, Sawmill? parent)
+    public Logbook(string name, Logbook? parent)
     {
         Name = name;
         _parent = parent;
@@ -77,7 +77,7 @@ public sealed class Sawmill : ISawmill
 
     private LogLevel EffectiveLevel()
     {
-        for (Sawmill? current = this; current is not null; current = current._parent)
+        for (Logbook? current = this; current is not null; current = current._parent)
         {
             if (current.Level is { } level)
             {
@@ -90,7 +90,7 @@ public sealed class Sawmill : ISawmill
 
     private void Dispatch(in LogMessage entry)
     {
-        for (Sawmill? current = this; current is not null; current = current._parent)
+        for (Logbook? current = this; current is not null; current = current._parent)
         {
             lock (current._gate)
             {
