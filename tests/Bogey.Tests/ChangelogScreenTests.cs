@@ -45,6 +45,24 @@ public sealed class ChangelogScreenTests
     }
 
     [Test]
+    public void Populate_CollapsesRepeatedAuthorHeaders()
+    {
+        FakeChangelog changelog = new(new[]
+        {
+            Entry(3, "Alpha", ChangeType.Add, "third"),
+            Entry(2, "Alpha", ChangeType.Add, "second"),
+            Entry(1, "Alpha", ChangeType.Add, "first"),
+        }, lastReadId: 3);
+
+        ChangelogScreen screen = new();
+        screen.Populate(changelog);
+
+        int headers = LabelTexts(screen).Count(t => t.Contains("ALPHA changed:"));
+
+        Assert.That(headers, Is.EqualTo(1));
+    }
+
+    [Test]
     public void Populate_Empty_ShowsPlaceholder()
     {
         ChangelogScreen screen = new();

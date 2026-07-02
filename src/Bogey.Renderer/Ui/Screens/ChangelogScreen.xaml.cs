@@ -38,6 +38,7 @@ public sealed partial class ChangelogScreen : Control
 
         int lastRead = changelog.LastReadId;
         DateTime? currentDate = null;
+        string? currentAuthor = null;
         bool sawUnread = false;
         bool dividerPlaced = false;
 
@@ -47,6 +48,7 @@ public sealed partial class ChangelogScreen : Control
             if (currentDate != date)
             {
                 currentDate = date;
+                currentAuthor = null;
                 List.AddChild(Text(FormatDate(date), 14f, UiTheme.Accent));
             }
 
@@ -57,10 +59,15 @@ public sealed partial class ChangelogScreen : Control
             else if (sawUnread && !dividerPlaced)
             {
                 dividerPlaced = true;
+                currentAuthor = null;
                 List.AddChild(Text("-- new since your last visit --", 12f, UiTheme.Accent));
             }
 
-            List.AddChild(Text(entry.Author.ToUpperInvariant() + " changed:", 12f, UiTheme.Subtle));
+            if (currentAuthor != entry.Author)
+            {
+                currentAuthor = entry.Author;
+                List.AddChild(Text(entry.Author.ToUpperInvariant() + " changed:", 12f, UiTheme.Subtle));
+            }
 
             foreach (ChangelogChange change in entry.Changes)
             {

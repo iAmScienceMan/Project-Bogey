@@ -44,3 +44,15 @@ Entries:
   Changes:
   - Type: Add
     Message: Added this changelog
+- Id: 7
+  Author: iamscienceman
+  Time: '2026-07-02T18:50:00.0000000+00:00'
+  Changes:
+    - Type: Tweak
+      Message: Move actions to commands
+- Id: 8
+  Author: iamscienceman
+  Time: '2026-07-02T19:20:00.0000000+00:00'
+  Changes:
+    - Type: Add
+      Message: Added help command
