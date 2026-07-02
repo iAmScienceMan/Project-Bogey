@@ -129,7 +129,9 @@ public sealed class ConsoleCommandRegistry
                     continue;
                 }
 
-                object? service = _services.FirstOrDefault(candidate => field.FieldType.IsInstanceOfType(candidate));
+                object? service = field.FieldType.IsInstanceOfType(this)
+                    ? this
+                    : _services.FirstOrDefault(candidate => field.FieldType.IsInstanceOfType(candidate));
                 if (service is null)
                 {
                     _log.Error(
