@@ -56,3 +56,9 @@ Entries:
   Changes:
     - Type: Add
       Message: Added help command
+- Id: 9
+  Author: iamscienceman
+  Time: '2026-07-02T19:22:00.0000000+00:00'
+  Changes:
+    - Type: Add
+      Message: Persistent settings
