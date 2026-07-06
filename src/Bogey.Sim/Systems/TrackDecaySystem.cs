@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Bogey.Shared.Components;
 using Bogey.Shared.Events;
 using Bogey.Shared.Tracks;
 using Bogey.Sim.Engine;
@@ -21,37 +22,40 @@ public sealed class TrackDecaySystem : SystemBase
 
     public override void Update()
     {
-        
-        List<KeyValuePair<int, Track>> entries = new(_tracking.Entries);
-
-        foreach (KeyValuePair<int, Track> entry in entries)
+        foreach (FactionType faction in Factions.InOrder)
         {
-            int truthEntity = entry.Key;
-            Track track = entry.Value;
+            List<KeyValuePair<int, Track>> entries = new(_tracking.EntriesFor(faction));
 
-            int idleTicks = _clock.CurrentTick - track.LastUpdatedTick;
-            if (idleTicks <= 0)
+            foreach (KeyValuePair<int, Track> entry in entries)
             {
-                continue;
-            }
+                int truthEntity = entry.Key;
+                Track track = entry.Value;
 
-            if (idleTicks >= _config.DropAfterIdleTicks)
-            {
-                _bus.Publish(new TrackDroppedEvent
+                int idleTicks = _clock.CurrentTick - track.LastUpdatedTick;
+                if (idleTicks <= 0)
                 {
-                    TruthEntityId = truthEntity,
+                    continue;
+                }
+
+                if (idleTicks >= _config.DropAfterIdleTicks)
+                {
+                    _bus.Publish(new TrackDroppedEvent
+                    {
+                        ObserverFaction = faction,
+                        TruthEntityId = truthEntity,
+                    });
+                    continue;
+                }
+
+                TrackState state = idleTicks >= _config.StaleAfterIdleTicks ? TrackState.Stale : track.State;
+
+                _tracking.Set(faction, truthEntity, track with
+                {
+                    Confidence = track.Confidence * _config.DecayConfidenceFactor,
+                    PositionalErrorKm = track.PositionalErrorKm + _config.PositionalErrorGrowthKmPerTick,
+                    State = state,
                 });
-                continue;
             }
-
-            TrackState state = idleTicks >= _config.StaleAfterIdleTicks ? TrackState.Stale : track.State;
-
-            _tracking.Set(truthEntity, track with
-            {
-                Confidence = track.Confidence * _config.DecayConfidenceFactor,
-                PositionalErrorKm = track.PositionalErrorKm + _config.PositionalErrorGrowthKmPerTick,
-                State = state,
-            });
         }
     }
 }

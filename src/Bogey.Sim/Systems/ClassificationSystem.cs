@@ -21,33 +21,37 @@ public sealed class ClassificationSystem : SystemBase
 
     public override void Update()
     {
-        
-        List<KeyValuePair<int, Track>> entries = new(_tracking.Entries);
-
-        foreach (KeyValuePair<int, Track> entry in entries)
+        foreach (FactionType faction in Factions.InOrder)
         {
-            int truthEntity = entry.Key;
-            Track track = entry.Value;
+            List<KeyValuePair<int, Track>> entries = new(_tracking.EntriesFor(faction));
 
-            
-            if (track.LastUpdatedTick != _clock.CurrentTick)
+            foreach (KeyValuePair<int, Track> entry in entries)
             {
-                continue;
-            }
+                int truthEntity = entry.Key;
+                Track track = entry.Value;
 
-            if (!_entities.TryGetComponent(truthEntity, out ClassificationProfile profile))
-            {
-                continue;
-            }
+                if (track.LastUpdatedTick != _clock.CurrentTick)
+                {
+                    continue;
+                }
 
-            Track resolved = Resolve(track, profile);
-            _tracking.Set(truthEntity, resolved);
+                if (!_entities.TryGetComponent(truthEntity, out ClassificationProfile profile))
+                {
+                    continue;
+                }
+
+                _tracking.Set(faction, truthEntity, Resolve(track, profile));
+            }
         }
     }
 
     private Track Resolve(Track track, ClassificationProfile profile)
     {
-        if (track.Confidence >= _config.IdentifyThreshold)
+        bool munition = profile.Domain == ContactDomain.Munition;
+        float identifyThreshold = munition ? _config.MunitionIdentifyThreshold : _config.IdentifyThreshold;
+        float classifyThreshold = munition ? _config.MunitionClassifyThreshold : _config.ClassifyThreshold;
+
+        if (track.Confidence >= identifyThreshold)
         {
             return track with
             {
@@ -57,7 +61,7 @@ public sealed class ClassificationSystem : SystemBase
             };
         }
 
-        if (track.Confidence >= _config.ClassifyThreshold)
+        if (track.Confidence >= classifyThreshold)
         {
             return track with
             {

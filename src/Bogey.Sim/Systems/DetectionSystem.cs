@@ -31,19 +31,13 @@ public sealed class DetectionSystem : SystemBase
 
         foreach (int sensorEntity in sensors)
         {
-            Faction sensorFaction = _entities.GetComponent<Faction>(sensorEntity);
-            if (sensorFaction.Side != FactionType.Friendly)
-            {
-                continue;
-            }
-
+            FactionType observerSide = _entities.GetComponent<Faction>(sensorEntity).Side;
             Sensor sensor = _entities.GetComponent<Sensor>(sensorEntity);
             Vector2 sensorPos = _entities.GetComponent<Transform>(sensorEntity).Position;
 
             foreach (int targetEntity in targets)
             {
-                Faction targetFaction = _entities.GetComponent<Faction>(targetEntity);
-                if (targetFaction.Side == FactionType.Friendly)
+                if (_entities.GetComponent<Faction>(targetEntity).Side == observerSide)
                 {
                     continue;
                 }
@@ -54,7 +48,7 @@ public sealed class DetectionSystem : SystemBase
 
                 float p = DetectionMath.Probability(distance, sensor, signature);
 
-                
+
                 double roll = _rng.NextDouble();
                 if (roll >= p)
                 {
@@ -64,6 +58,7 @@ public sealed class DetectionSystem : SystemBase
                 Vector2 observed = targetPos + NoiseOffset(distance, sensor.RangeKm);
                 _bus.PublishDirected(targetEntity, new ContactDetectedEvent
                 {
+                    ObserverFaction = observerSide,
                     ObservedPosition = observed,
                     DetectionStrength = p,
                     Tick = _clock.CurrentTick,

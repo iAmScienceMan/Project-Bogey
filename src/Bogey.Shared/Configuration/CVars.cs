@@ -11,8 +11,11 @@ public static class CVars
     public static readonly CVarDef<int> GameSeed =
         CVarDef.Create("game.seed", 1337, CVarFlags.None, "Deterministic scenario seed applied on deploy.");
 
+    public static readonly CVarDef<string> GameScenario =
+        CVarDef.Create("game.scenario", "default", CVarFlags.Archive, "Scenario id spawned on deploy.");
+
     public static readonly CVarDef<int> GameDefaultSpeed =
-        CVarDef.Create("game.default_speed", 1, CVarFlags.Archive, "Sim speed on deploy: 0 paused, 1 normal, 2 fast.");
+        CVarDef.Create("game.default_speed", 1, CVarFlags.Archive, "Sim speed on deploy in ticks per second (0-100).");
 
     public static readonly CVarDef<bool> GameStartPaused =
         CVarDef.Create("game.start_paused", false, CVarFlags.Archive, "Deploy with the simulation paused.");
@@ -41,12 +44,6 @@ public static class CVars
 
     public static readonly CVarDef<int> ChangelogLastReadId =
         CVarDef.Create("changelog.last_read_id", 0, CVarFlags.Archive, "Highest changelog entry id the player has seen.");
-
-    public static readonly CVarDef<float> SimNormalTps =
-        CVarDef.Create("sim.normal_tps", 1f, CVarFlags.Archive, "Ticks per second at normal speed.");
-
-    public static readonly CVarDef<float> SimFastTps =
-        CVarDef.Create("sim.fast_tps", 10f, CVarFlags.Archive, "Ticks per second at fast speed.");
 
     public static readonly CVarDef<float> SimInitialConfidence =
         CVarDef.Create("sim.initial_confidence", 0.12f, CVarFlags.Archive, "Track confidence on first detection.");

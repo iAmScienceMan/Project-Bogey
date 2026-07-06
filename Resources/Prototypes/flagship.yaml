@@ -1,0 +1,32 @@
+# command ship, the reference unit and main sensor
+id: flagship
+name: BVS Meridian (flagship)
+faction: Friendly
+signature: 0.7
+posture: Defensive
+sensor:
+  rangeKm: 150
+  maxDetectProbability: 0.95
+  falloffExponent: 1.5
+propulsion:
+  maxSpeedKmPerTick: 0.4
+classification:
+  domain: Surface
+  typeName: Meridian-class command vessel
+health:
+  max: 400
+weapons:
+  - projectilePrototype: AIM-120D
+    cooldownTicks: 6
+    magazine: 24
+  - projectilePrototype: AIRS-T
+    cooldownTicks: 3
+    magazine: 32
+  - projectilePrototype: AGM-89
+    cooldownTicks: 20
+    magazine: 8
+  - pointDefense: true
+    pointDefensePk: 0.6
+    rangeKm: 9
+    cooldownTicks: 1
+    magazine: 300

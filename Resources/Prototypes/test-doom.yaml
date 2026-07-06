@@ -1,0 +1,55 @@
+id: test-doom
+name: BVS "Doom Machine"
+faction: Friendly
+signature: 0.3
+posture: Defensive
+
+sensor:
+  rangeKm: 170
+  maxDetectProbability: 0.95
+  falloffExponent: 1.5
+
+propulsion:
+  maxSpeedKmPerTick: 10.0
+
+classification:
+  domain: Surface
+  typeName: Experimental Test Platform
+
+health:
+  max: 1000000
+
+weapons:
+  - projectilePrototype: AIM-120D
+    cooldownTicks: 1
+    magazine: 100000
+
+  - projectilePrototype: AIM-9PLUS
+    cooldownTicks: 1
+    magazine: 100000
+
+  - projectilePrototype: AIRS-T
+    cooldownTicks: 1
+    magazine: 100000
+
+  - projectilePrototype: AGM-88PLUS
+    cooldownTicks: 1
+    magazine: 50000
+
+  - projectilePrototype: AGM-89
+    cooldownTicks: 1
+    magazine: 50000
+
+  - projectilePrototype: AGM-161
+    cooldownTicks: 1
+    magazine: 50000
+
+  - projectilePrototype: AGM-65
+    cooldownTicks: 1
+    magazine: 50000
+
+  - pointDefense: true
+    pointDefensePk: 0.6
+    rangeKm: 9
+    cooldownTicks: 1
+    magazine: 1000000

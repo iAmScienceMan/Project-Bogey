@@ -1,0 +1,28 @@
+id: test-cruiser
+name: BVS Resolute (DDG-114)
+faction: Friendly
+signature: 0.6
+posture: Defensive
+sensor:
+  rangeKm: 170
+  maxDetectProbability: 0.95
+  falloffExponent: 1.5
+propulsion:
+  maxSpeedKmPerTick: 0.5
+classification:
+  domain: Surface
+  typeName: Resolute-class destroyer
+health:
+  max: 300
+weapons:
+  - projectilePrototype: AIM-120D
+    cooldownTicks: 6
+    magazine: 16
+  - projectilePrototype: AGM-89
+    cooldownTicks: 20
+    magazine: 8
+  - pointDefense: true
+    pointDefensePk: 0.6
+    rangeKm: 9
+    cooldownTicks: 1
+    magazine: 300

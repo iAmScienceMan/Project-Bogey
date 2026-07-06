@@ -9,7 +9,7 @@ namespace Bogey.Tests;
 [TestFixture]
 public sealed class DeterminismTests
 {
-    private static List<PrototypeDefinition> MixedScenario() => new()
+    private static List<SpawnSpec> MixedScenario() => new()
     {
         TestScenarios.FriendlySensorAtOrigin(rangeKm: 150f, maxDetect: 0.95f, falloff: 1.5f),
         TestScenarios.Hostile(40f, 25f, 1.8f, 1.1f, 0.55f, ContactDomain.Air, "Wraith-class interceptor"),

@@ -1,0 +1,25 @@
+# AGM-65 - optical fire-and-forget anti-surface missile
+id: AGM-65
+name: AGM-65 Maverick
+faction: Neutral
+signature: 0.18
+classification:
+  domain: Munition
+  typeName: AGM-65 (optical)
+health:
+  max: 1
+propulsion:
+  maxSpeedKmPerTick: 3.6
+projectile:
+  damage: 75
+  detonationRangeKm: 1.5
+  pk: 0.95
+  rangeKm: 45
+  targetDomains: [Surface]
+  motorBurnTicks: 10
+  dragPerTick: 0.05
+  seeker:
+    type: Optical
+    acquisitionRangeKm: 16
+    fovDegrees: 30
+    datalink: false

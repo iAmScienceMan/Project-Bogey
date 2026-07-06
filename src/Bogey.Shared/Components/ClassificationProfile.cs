@@ -7,6 +7,7 @@ public enum ContactDomain
     Air,
     Surface,
     Subsurface,
+    Munition,
 }
 
 public sealed class ClassificationProfile

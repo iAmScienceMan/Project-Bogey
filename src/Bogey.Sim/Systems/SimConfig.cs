@@ -10,6 +10,12 @@ public sealed class SimConfig
 
     public float IdentifyThreshold { get; init; } = 0.75f;
 
+    public float MunitionClassifyThreshold { get; init; } = 0.05f;
+
+    public float MunitionIdentifyThreshold { get; init; } = 0.30f;
+
+    public int MaxAutoCommitPerTarget { get; init; } = 2;
+
     public float BasePositionalErrorKm { get; init; } = 3.0f;
 
     public float ObservationNoiseKm { get; init; } = 4.0f;

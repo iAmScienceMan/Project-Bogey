@@ -14,7 +14,7 @@ public sealed class ClassificationTests
     public void PersistentlyDetectedContact_ResolvesFromUnknownToIdentified()
     {
         
-        List<PrototypeDefinition> scenario = new()
+        List<SpawnSpec> scenario = new()
         {
             TestScenarios.FriendlySensorAtOrigin(rangeKm: 200f, maxDetect: 1.0f, falloff: 1.0f),
             TestScenarios.Hostile(

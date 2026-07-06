@@ -19,6 +19,8 @@ public sealed record Track
 
     public required Vector2 EstimatedPosition { get; init; }
 
+    public Vector2 EstimatedVelocity { get; init; }
+
     
     public required float PositionalErrorKm { get; init; }
 

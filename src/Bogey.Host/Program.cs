@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using Bogey.Logging;
 using Bogey.Renderer.App;
 using Bogey.Shared.Changelog;
@@ -58,21 +59,39 @@ public sealed class Program
         options.ApplyTo(cfg);
         cfg.EnablePersistence(settingsPath);
 
-        IReadOnlyList<PrototypeDefinition> prototypes;
+        IReadOnlyDictionary<string, PrototypeDefinition> prototypes;
+        IReadOnlyDictionary<string, ScenarioDefinition> scenarios;
         try
         {
-            prototypes = new PrototypeLoader().LoadDirectory(options.PrototypesPath);
+            PrototypeLoader loader = new();
+            prototypes = loader.LoadPrototypes(options.PrototypesPath);
+            scenarios = loader.LoadScenarios(options.ScenariosPath);
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException)
         {
-            log.Error($"Failed to load prototypes from '{options.PrototypesPath}': {ex.Message}");
+            log.Error($"Failed to load content: {ex.Message}");
             return 1;
         }
 
-        return RunRealtime(cfg, prototypes, logManager);
+        if (scenarios.Count == 0)
+        {
+            log.Error("No scenarios found; nothing to deploy.");
+            return 1;
+        }
+
+        if (!scenarios.ContainsKey(cfg.GetCVar(CVars.GameScenario)))
+        {
+            cfg.SetCVar(CVars.GameScenario, scenarios.ContainsKey("default") ? "default" : scenarios.Keys.First());
+        }
+
+        return RunRealtime(cfg, prototypes, scenarios, logManager);
     }
 
-    private static int RunRealtime(IConfigurationManager cfg, IReadOnlyList<PrototypeDefinition> prototypes, ILogManager logManager)
+    private static int RunRealtime(
+        IConfigurationManager cfg,
+        IReadOnlyDictionary<string, PrototypeDefinition> prototypes,
+        IReadOnlyDictionary<string, ScenarioDefinition> scenarios,
+        ILogManager logManager)
     {
         bool debug = cfg.GetCVar(CVars.DebugOverlay);
         RendererOptions rendererOptions = new()
@@ -80,18 +99,29 @@ public sealed class Program
             Title = $"PROJECT BOGEY - tactical (seed {cfg.GetCVar(CVars.GameSeed)})" + (debug ? " [DEBUG]" : string.Empty),
         };
 
+        List<string> prototypeIds = prototypes.Keys.ToList();
+        List<ScenarioInfo> scenarioCatalog = scenarios.Values
+            .OrderBy(static s => s.Name, StringComparer.Ordinal)
+            .Select(static s => new ScenarioInfo(s.Id, s.Name))
+            .ToList();
+
         SimBootFactory factory = configuration =>
         {
+            string scenarioId = configuration.GetCVar(CVars.GameScenario);
+            if (!scenarios.TryGetValue(scenarioId, out ScenarioDefinition? scenario))
+            {
+                scenario = scenarios.TryGetValue("default", out ScenarioDefinition? fallback)
+                    ? fallback
+                    : scenarios.Values.First();
+            }
+
             SimConfig simConfig = BuildSimConfig(configuration);
-            SimRuntime runtime = new(prototypes, configuration.GetCVar(CVars.GameSeed), simConfig, logManager);
-            SimSession session = new(
-                runtime,
-                configuration.GetCVar(CVars.SimNormalTps),
-                configuration.GetCVar(CVars.SimFastTps));
+            SimRuntime runtime = new(scenario, prototypes, configuration.GetCVar(CVars.GameSeed), simConfig, logManager);
+            SimSession session = new(runtime);
             IDebugOverlay? overlay = configuration.GetCVar(CVars.DebugOverlay)
                 ? new GroundTruthOverlay(runtime)
                 : null;
-            return new SimBoot(session, overlay);
+            return new SimBoot(session, overlay, prototypeIds);
         };
 
         ChangelogManager changelog = new(cfg, logManager.GetLogbook("changelog"));
@@ -100,9 +130,9 @@ public sealed class Program
         Console.WriteLine("PROJECT BOGEY - live tactical view");
         Console.WriteLine("  main menu: set a callsign and seed, then DEPLOY. OPTIONS for settings, CHANGELOG for news.");
         Console.WriteLine("  tactical view: click a friendly unit to select, click the map to order a move.");
-        Console.WriteLine("  SPACE pause/resume   1 normal   2 fast   drag pan   scroll zoom   ESC quit   ` console");
+        Console.WriteLine("  SPACE pause/resume   1 normal   2 fast   drag pan   scroll zoom   ESC main menu   ` console");
 
-        using TacticalWindow window = new(rendererOptions, cfg, changelog, factory);
+        using TacticalWindow window = new(rendererOptions, cfg, changelog, factory, scenarioCatalog);
         window.Run();
         return 0;
     }
@@ -134,13 +164,16 @@ public sealed class Program
     private sealed class Options
     {
         public const string Usage =
-            "usage: Bogey.Host [--seed N] [--debug] [--ui-scale F] [--prototypes PATH]";
+            "usage: Bogey.Host [--seed N] [--debug] [--ui-scale F] [--prototypes PATH] [--scenarios PATH] [--scenario ID]";
 
         public int Seed { get; private set; } = 1337;
         public bool Debug { get; private set; }
         public float? UiScale { get; private set; }
         public string PrototypesPath { get; private set; } =
             Path.Combine(AppContext.BaseDirectory, "Resources", "Prototypes");
+        public string ScenariosPath { get; private set; } =
+            Path.Combine(AppContext.BaseDirectory, "Resources", "Scenarios");
+        public string? Scenario { get; private set; }
 
         public void ApplyTo(IConfigurationManager cfg)
         {
@@ -149,6 +182,11 @@ public sealed class Program
             if (UiScale is { } uiScale)
             {
                 cfg.SetCVar(CVars.UiScale, uiScale);
+            }
+
+            if (Scenario is { } scenario)
+            {
+                cfg.SetCVar(CVars.GameScenario, scenario);
             }
         }
 
@@ -171,6 +209,12 @@ public sealed class Program
                         break;
                     case "--prototypes":
                         options.PrototypesPath = NextValue(args, ref i, "--prototypes");
+                        break;
+                    case "--scenarios":
+                        options.ScenariosPath = NextValue(args, ref i, "--scenarios");
+                        break;
+                    case "--scenario":
+                        options.Scenario = NextValue(args, ref i, "--scenario");
                         break;
                     default:
                         throw new ArgumentException($"Unknown argument: {args[i]}");

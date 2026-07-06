@@ -89,6 +89,36 @@ public sealed class SpriteBatch : IDisposable
         PushVertex(vertices, x0, y1, 0f, 1f, tint);
     }
 
+    public void Draw(Texture texture, Vector2 center, Vector2 sizePx, Rgba tint, float rotationRadians)
+    {
+        if (!_batches.TryGetValue(texture, out List<float>? vertices))
+        {
+            vertices = new List<float>();
+            _batches[texture] = vertices;
+        }
+
+        float hx = sizePx.X * 0.5f;
+        float hy = sizePx.Y * 0.5f;
+        float cos = MathF.Cos(rotationRadians);
+        float sin = MathF.Sin(rotationRadians);
+
+        Vector2 Corner(float ox, float oy)
+            => new(center.X + (ox * cos) - (oy * sin), center.Y + (ox * sin) + (oy * cos));
+
+        Vector2 topLeft = Corner(-hx, -hy);
+        Vector2 topRight = Corner(hx, -hy);
+        Vector2 bottomRight = Corner(hx, hy);
+        Vector2 bottomLeft = Corner(-hx, hy);
+
+        PushVertex(vertices, topLeft.X, topLeft.Y, 0f, 0f, tint);
+        PushVertex(vertices, topRight.X, topRight.Y, 1f, 0f, tint);
+        PushVertex(vertices, bottomRight.X, bottomRight.Y, 1f, 1f, tint);
+
+        PushVertex(vertices, topLeft.X, topLeft.Y, 0f, 0f, tint);
+        PushVertex(vertices, bottomRight.X, bottomRight.Y, 1f, 1f, tint);
+        PushVertex(vertices, bottomLeft.X, bottomLeft.Y, 0f, 1f, tint);
+    }
+
     public void Flush(Vector2 viewport)
     {
         if (_batches.Count == 0)

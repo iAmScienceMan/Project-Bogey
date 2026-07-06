@@ -1,9 +1,9 @@
+id: interceptor
 name: Wraith-class interceptor
 faction: Hostile
-transform:
-  position: [40, 25]
-  velocity: [1.8, 1.1]
 signature: 0.55
 classification:
   domain: Air
   typeName: Wraith-class interceptor
+health:
+  max: 90

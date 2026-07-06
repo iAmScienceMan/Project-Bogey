@@ -14,6 +14,8 @@
           <LineEdit Name="CallsignEdit" MinWidth="220" FontSize="14" PlaceHolder="your callsign" />
           <Label Text="SEED" FontSize="14" Color="#CCDBEB" />
           <LineEdit Name="SeedEdit" MinWidth="220" FontSize="14" Numeric="true" PlaceHolder="scenario seed" />
+          <Label Text="SCENARIO" FontSize="14" Color="#CCDBEB" />
+          <Button Name="ScenarioButton" MinWidth="220" FontSize="14" />
         </GridContainer>
 
         <Button Name="DeployButton" Text="DEPLOY" FontSize="16" MinWidth="280" />

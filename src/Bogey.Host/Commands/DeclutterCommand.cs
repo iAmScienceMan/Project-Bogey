@@ -16,7 +16,7 @@ public sealed class DeclutterCommand : ConsoleCommand
     {
         if (_context.Overlay is not { } overlay)
         {
-            shell.WriteError("No debug overlay is active; deploy with --debug first.");
+            shell.WriteError("No debug overlay found active.");
             return;
         }
 

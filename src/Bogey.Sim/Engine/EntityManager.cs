@@ -19,6 +19,15 @@ public sealed class EntityManager
         return id;
     }
 
+    public void DestroyEntity(int entityId)
+    {
+        _entities.Remove(entityId);
+        foreach (object store in _stores.Values)
+        {
+            ((System.Collections.IDictionary)store).Remove(entityId);
+        }
+    }
+
     public void AddComponent<T>(int entityId, T component)
         where T : class
     {

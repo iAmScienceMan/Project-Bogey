@@ -1,3 +1,4 @@
+using System.Numerics;
 using Bogey.Shared.Components;
 using Bogey.Shared.Prototypes;
 using Bogey.Sim.Content;
@@ -19,11 +20,9 @@ public sealed class PrototypeLoaderTests
     public void LoadFromYaml_ReadsAllComponents_OfAFullPrototype()
     {
         const string yaml = """
+            id: flagship
             name: BVS Meridian (flagship)
             faction: Friendly
-            transform:
-              position: [1, 2]
-              velocity: [3, 4]
             signature: 0.7
             sensor:
               rangeKm: 150
@@ -36,12 +35,9 @@ public sealed class PrototypeLoaderTests
 
         PrototypeDefinition def = _loader.LoadFromYaml(yaml);
 
+        Assert.That(def.Id, Is.EqualTo("flagship"));
         Assert.That(def.Name, Is.EqualTo("BVS Meridian (flagship)"));
         Assert.That(def.Faction, Is.EqualTo(FactionType.Friendly));
-
-        Assert.That(def.Transform, Is.Not.Null);
-        Assert.That(def.Transform!.Position, Is.EqualTo(new[] { 1f, 2f }));
-        Assert.That(def.Transform.Velocity, Is.EqualTo(new[] { 3f, 4f }));
 
         Assert.That(def.Signature, Is.EqualTo(0.7f));
 
@@ -59,11 +55,9 @@ public sealed class PrototypeLoaderTests
     public void LoadFromYaml_LeavesAbsentComponentsNull()
     {
         const string yaml = """
+            id: submersible
             name: Silt-class submersible
             faction: Hostile
-            transform:
-              position: [30, 70]
-              velocity: [0.2, -0.3]
             signature: 0.18
             classification:
               domain: Subsurface
@@ -81,11 +75,11 @@ public sealed class PrototypeLoaderTests
     [Test]
     public void LoadFromYaml_HandlesMinimalPrototype()
     {
-        PrototypeDefinition def = _loader.LoadFromYaml("name: Bare\nfaction: Neutral\n");
+        PrototypeDefinition def = _loader.LoadFromYaml("id: bare\nname: Bare\nfaction: Neutral\n");
 
+        Assert.That(def.Id, Is.EqualTo("bare"));
         Assert.That(def.Name, Is.EqualTo("Bare"));
         Assert.That(def.Faction, Is.EqualTo(FactionType.Neutral));
-        Assert.That(def.Transform, Is.Null);
         Assert.That(def.Signature, Is.Null);
         Assert.That(def.Sensor, Is.Null);
         Assert.That(def.Classification, Is.Null);
@@ -96,11 +90,9 @@ public sealed class PrototypeLoaderTests
     {
         
         const string yaml = """
+            id: interceptor
             name: Wraith-class interceptor
             faction: Hostile
-            transform:
-              position: [40, 25]
-              velocity: [1.8, 1.1]
             signature: 0.55
             classification:
               domain: Air
@@ -110,7 +102,7 @@ public sealed class PrototypeLoaderTests
         PrototypeDefinition def = _loader.LoadFromYaml(yaml);
 
         EntityManager entities = new();
-        int entity = PrototypeFactory.Spawn(entities, def);
+        int entity = PrototypeFactory.Spawn(entities, def, new Placement(new Vector2(40f, 25f), new Vector2(1.8f, 1.1f)));
 
         Assert.That(entities.HasComponent<Identity>(entity), Is.True);
         Assert.That(entities.HasComponent<Faction>(entity), Is.True);
@@ -119,6 +111,7 @@ public sealed class PrototypeLoaderTests
         Assert.That(entities.HasComponent<ClassificationProfile>(entity), Is.True);
         Assert.That(entities.HasComponent<Sensor>(entity), Is.False, "interceptor has no sensor block");
 
+        Assert.That(entities.GetComponent<Transform>(entity).Position, Is.EqualTo(new Vector2(40f, 25f)));
         Assert.That(entities.GetComponent<Signature>(entity).Value, Is.EqualTo(0.55f));
         Assert.That(entities.GetComponent<ClassificationProfile>(entity).Domain, Is.EqualTo(ContactDomain.Air));
     }

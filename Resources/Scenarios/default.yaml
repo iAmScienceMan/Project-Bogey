@@ -1,0 +1,18 @@
+# The reference engagement. Spawn order here defines the deterministic
+# RNG draw order, so keep entries stable if you care about replays.
+id: default
+name: Meridian Patrol
+spawns:
+  - proto: flagship
+    position: [0, 0]
+  - proto: picket
+    position: [0, 60]
+  - proto: interceptor
+    position: [40, 25]
+    velocity: [1.8, 1.1]
+  - proto: bomber
+    position: [120, -40]
+    velocity: [-1.2, 0.3]
+  - proto: submersible
+    position: [30, 70]
+    velocity: [0.2, -0.3]

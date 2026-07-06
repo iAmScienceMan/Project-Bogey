@@ -43,4 +43,23 @@ internal static class Interp
 
         return currentPosition;
     }
+
+    public static Vector2 MunitionPosition(ISimSession session, int id, Vector2 currentPosition)
+    {
+        TrackPictureSnapshot? previous = session.Previous;
+        if (previous is null)
+        {
+            return currentPosition;
+        }
+
+        foreach (MunitionView prior in previous.Munitions)
+        {
+            if (prior.Id == id)
+            {
+                return Vector2.Lerp(prior.Position, currentPosition, session.Alpha);
+            }
+        }
+
+        return currentPosition;
+    }
 }

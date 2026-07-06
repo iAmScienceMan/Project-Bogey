@@ -14,7 +14,7 @@ public sealed class OrderingTests
     [Test]
     public void OrderedUnit_SteersTowardWaypoint()
     {
-        SimRuntime sim = new(new[] { TestScenarios.FriendlyMover(0f, 0f, 1f) }, seed: 1);
+        SimRuntime sim = TestScenarios.Build(seed: 1, config: null, TestScenarios.FriendlyMover(0f, 0f, 1f));
 
         Assert.That(sim.IssueMoveOrder("Mover", new Vector2(3f, 4f)), Is.True);
         sim.Step();
@@ -29,7 +29,7 @@ public sealed class OrderingTests
     public void OrderedUnit_StopsNearWaypointAndHolds()
     {
         Vector2 waypoint = new(5f, 0f);
-        SimRuntime sim = new(new[] { TestScenarios.FriendlyMover(0f, 0f, 1f) }, seed: 1);
+        SimRuntime sim = TestScenarios.Build(seed: 1, config: null, TestScenarios.FriendlyMover(0f, 0f, 1f));
         sim.IssueMoveOrder("Mover", waypoint);
 
         for (int i = 0; i < 10; i++)
@@ -48,9 +48,29 @@ public sealed class OrderingTests
     }
 
     [Test]
+    public void FastUnit_ReachesWaypointCloserThanOneTickOfTravel()
+    {
+        Vector2 waypoint = new(4f, 0f);
+        SimRuntime sim = TestScenarios.Build(seed: 1, config: null, TestScenarios.FriendlyMover(0f, 0f, 10f));
+        sim.IssueMoveOrder("Mover", waypoint);
+
+        for (int i = 0; i < 5; i++)
+        {
+            sim.Step();
+        }
+
+        Vector2 arrived = sim.PublishSnapshot().OwnUnits[0].Position;
+        Assert.That((arrived - waypoint).Length(), Is.LessThanOrEqualTo(Tolerance),
+            "a fast unit must still be able to travel less than one tick's worth of distance");
+
+        sim.Step();
+        Assert.That(sim.PublishSnapshot().OwnUnits[0].Position, Is.EqualTo(arrived), "the unit must hold at the waypoint");
+    }
+
+    [Test]
     public void UnorderedMover_StaysPut()
     {
-        SimRuntime sim = new(new[] { TestScenarios.FriendlyMover(10f, -10f, 1f) }, seed: 1);
+        SimRuntime sim = TestScenarios.Build(seed: 1, config: null, TestScenarios.FriendlyMover(10f, -10f, 1f));
 
         for (int i = 0; i < 5; i++)
         {
@@ -63,13 +83,11 @@ public sealed class OrderingTests
     [Test]
     public void IssueMoveOrder_RejectsUnknownAndUnmovableUnits()
     {
-        PrototypeDefinition stationary = new()
-        {
-            Name = "Tower",
-            Faction = FactionType.Friendly,
-            Transform = new TransformDef { Position = new() { 0f, 0f }, Velocity = new() { 0f, 0f } },
-        };
-        SimRuntime sim = new(new[] { stationary, TestScenarios.FriendlyMover(0f, 0f, 1f) }, seed: 1);
+        SpawnSpec stationary = new(
+            new PrototypeDefinition { Name = "Tower", Faction = FactionType.Friendly },
+            Vector2.Zero,
+            Vector2.Zero);
+        SimRuntime sim = TestScenarios.Build(seed: 1, config: null, stationary, TestScenarios.FriendlyMover(0f, 0f, 1f));
 
         Assert.Multiple(() =>
         {
@@ -82,14 +100,16 @@ public sealed class OrderingTests
     [Test]
     public void IssueMoveOrder_DoesNotCommandHostiles()
     {
-        PrototypeDefinition hostileMover = new()
-        {
-            Name = "Bandit",
-            Faction = FactionType.Hostile,
-            Transform = new TransformDef { Position = new() { 0f, 0f }, Velocity = new() { 0f, 0f } },
-            Propulsion = new PropulsionDef { MaxSpeedKmPerTick = 1f },
-        };
-        SimRuntime sim = new(new[] { hostileMover }, seed: 1);
+        SpawnSpec hostileMover = new(
+            new PrototypeDefinition
+            {
+                Name = "Bandit",
+                Faction = FactionType.Hostile,
+                Propulsion = new PropulsionDef { MaxSpeedKmPerTick = 1f },
+            },
+            Vector2.Zero,
+            Vector2.Zero);
+        SimRuntime sim = TestScenarios.Build(seed: 1, config: null, hostileMover);
 
         Assert.That(sim.IssueMoveOrder("Bandit", new Vector2(5f, 5f)), Is.False,
             "the commander can only order their own side.");

@@ -1,0 +1,25 @@
+# AGM-161 - GPS/INS strike missile. Flies to a fixed coordinate
+id: AGM-161
+name: AGM-161 JASSM
+faction: Neutral
+signature: 0.16
+classification:
+  domain: Munition
+  typeName: AGM-161 (GPS)
+health:
+  max: 1
+propulsion:
+  maxSpeedKmPerTick: 4.0
+projectile:
+  damage: 150
+  detonationRangeKm: 3.0
+  pk: 1.0
+  rangeKm: 250
+  targetDomains: [Surface]
+  motorBurnTicks: 62
+  dragPerTick: 0.04
+  seeker:
+    type: Gps
+    acquisitionRangeKm: 0
+    fovDegrees: 0
+    datalink: false

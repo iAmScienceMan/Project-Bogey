@@ -73,15 +73,13 @@ public sealed partial class OptionsScreen : Control
         AddTextRow(BasicPage, "WINDOW WIDTH", CVars.RenderWidth);
         AddTextRow(BasicPage, "WINDOW HEIGHT", CVars.RenderHeight);
         AddToggleRow(BasicPage, "VSYNC", CVars.RenderVsync);
-        AddSpeedRow(BasicPage, "DEFAULT SPEED", CVars.GameDefaultSpeed);
+        AddTextRow(BasicPage, "DEFAULT SPEED", CVars.GameDefaultSpeed);
         AddToggleRow(BasicPage, "START PAUSED", CVars.GameStartPaused);
         AddToggleRow(BasicPage, "DEBUG OVERLAY", CVars.DebugOverlay);
     }
 
     private void BuildAdvancedPage()
     {
-        AddTextRow(AdvancedPage, "NORMAL TICKS/SEC", CVars.SimNormalTps);
-        AddTextRow(AdvancedPage, "FAST TICKS/SEC", CVars.SimFastTps);
         AddTextRow(AdvancedPage, "INITIAL CONFIDENCE", CVars.SimInitialConfidence);
         AddTextRow(AdvancedPage, "CONFIDENCE GAIN", CVars.SimConfidenceGain);
         AddTextRow(AdvancedPage, "CLASSIFY THRESHOLD", CVars.SimClassifyThreshold);
@@ -139,29 +137,6 @@ public sealed partial class OptionsScreen : Control
         _apply.Add(() => _cfg.SetCVar(def, state[0]));
     }
 
-    private void AddSpeedRow(GridContainer page, string label, CVarDef<int> def)
-    {
-        page.AddChild(MakeLabel(label));
-        Button cycle = new() { FontSize = 13f, MinWidth = 220f };
-        int[] value = { Clamp3(_cfg.GetCVar(def)) };
-
-        cycle.Text = SpeedName(value[0]);
-        cycle.OnPressed += () =>
-        {
-            value[0] = (value[0] + 1) % 3;
-            cycle.Text = SpeedName(value[0]);
-        };
-
-        page.AddChild(cycle);
-        _managed.Add(def);
-        _refresh.Add(() =>
-        {
-            value[0] = Clamp3(_cfg.GetCVar(def));
-            cycle.Text = SpeedName(value[0]);
-        });
-        _apply.Add(() => _cfg.SetCVar(def, value[0]));
-    }
-
     private void Apply()
     {
         _errors.Clear();
@@ -208,12 +183,4 @@ public sealed partial class OptionsScreen : Control
     private static bool IsNumeric(Type type)
         => type == typeof(int) || type == typeof(long) || type == typeof(float) || type == typeof(double);
 
-    private static int Clamp3(int value) => value < 0 ? 0 : value > 2 ? 2 : value;
-
-    private static string SpeedName(int value) => value switch
-    {
-        0 => "PAUSED",
-        1 => "NORMAL",
-        _ => "FAST",
-    };
 }

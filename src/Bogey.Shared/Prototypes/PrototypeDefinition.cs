@@ -5,13 +5,12 @@ namespace Bogey.Shared.Prototypes;
 
 public sealed class PrototypeDefinition
 {
+    public string Id { get; set; } = string.Empty;
+
     public string Name { get; set; } = string.Empty;
 
     public FactionType Faction { get; set; } = FactionType.Neutral;
 
-    public TransformDef? Transform { get; set; }
-
-    
     public float? Signature { get; set; }
 
     public SensorDef? Sensor { get; set; }
@@ -19,13 +18,57 @@ public sealed class PrototypeDefinition
     public ClassificationDef? Classification { get; set; }
 
     public PropulsionDef? Propulsion { get; set; }
+
+    public HealthDef? Health { get; set; }
+
+    public List<WeaponMountDef>? Weapons { get; set; }
+
+    public ProjectileDef? Projectile { get; set; }
+
+    public AiDef? Ai { get; set; }
+
+    public WeaponPosture? Posture { get; set; }
 }
 
-
-public sealed class TransformDef
+public sealed class AiDef
 {
-    public List<float> Position { get; set; } = new();
-    public List<float> Velocity { get; set; } = new();
+    public AiBehavior Behavior { get; set; } = AiBehavior.Aggressive;
+}
+
+public sealed class HealthDef
+{
+    public float Max { get; set; }
+}
+
+public sealed class WeaponMountDef
+{
+    public string ProjectilePrototype { get; set; } = string.Empty;
+    public int CooldownTicks { get; set; }
+    public int Magazine { get; set; }
+    public bool PointDefense { get; set; }
+    public float PointDefensePk { get; set; }
+    public float RangeKm { get; set; }
+}
+
+public sealed class ProjectileDef
+{
+    public float Damage { get; set; }
+    public float DetonationRangeKm { get; set; }
+    public float Pk { get; set; } = 1f;
+    public float RangeKm { get; set; }
+    public List<ContactDomain> TargetDomains { get; set; } = new();
+    public int MotorBurnTicks { get; set; }
+    public float DragPerTick { get; set; } = 0.04f;
+    public SeekerDef? Seeker { get; set; }
+}
+
+public sealed class SeekerDef
+{
+    public SeekerType Type { get; set; } = SeekerType.ActiveRadar;
+    public float AcquisitionRangeKm { get; set; }
+    public float FovDegrees { get; set; } = 360f;
+    public bool Datalink { get; set; }
+    public bool TargetsMunitions { get; set; }
 }
 
 public sealed class SensorDef
@@ -43,6 +86,5 @@ public sealed class ClassificationDef
 
 public sealed class PropulsionDef
 {
-    
     public float MaxSpeedKmPerTick { get; set; }
 }

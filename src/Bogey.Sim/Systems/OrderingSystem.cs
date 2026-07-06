@@ -40,11 +40,16 @@ public sealed class OrderingSystem : SystemBase
             float distance = toGo.Length();
             float stepKm = propulsion.MaxSpeedKmPerTick * (float)SimClock.SecondsPerTick;
 
-            
-            if (distance <= stepKm)
+            if (distance < 1e-3f)
             {
                 transform.Velocity = Vector2.Zero;
                 propulsion.Waypoint = null;
+                continue;
+            }
+
+            if (distance <= stepKm)
+            {
+                transform.Velocity = toGo / (float)SimClock.SecondsPerTick;
                 continue;
             }
 

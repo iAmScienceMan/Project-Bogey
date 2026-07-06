@@ -42,9 +42,17 @@ public sealed class Tooltip : Control
             return;
         }
 
+        int previousPrimsLayer = prims.Layer;
+        int previousTextLayer = text.Layer;
+        prims.Layer = (int)RenderLayer.Ui + 50;
+        text.Layer = (int)RenderLayer.Ui + 50;
+
         prims.FilledQuad(Bounds.Min, Bounds.Max, UiTheme.TooltipBackground);
         UiDraw.Box(prims, Bounds, UiTheme.Border);
         text.Text(new Vector2(Bounds.X + Padding, Bounds.Y + Padding), UiTheme.TooltipFontPx, UiTheme.Text, tip);
+
+        prims.Layer = previousPrimsLayer;
+        text.Layer = previousTextLayer;
     }
 
     private bool HasContent(out string tip)

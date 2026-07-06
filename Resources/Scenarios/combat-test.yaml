@@ -1,0 +1,33 @@
+id: combat-test
+name: Combat Test Range
+
+spawns:
+  - proto: test-doom
+    position: [0, 0]
+    name: Legion
+
+  # Air threats
+  - proto: test-bandit
+    position: [90, 20]
+    name: Kestrel 1
+
+  - proto: test-bandit
+    position: [110, -30]
+    velocity: [-0.4, 0.2]
+    name: Kestrel 2
+
+  - proto: test-bandit
+    position: [70, 90]
+    velocity: [-0.3, -0.3]
+    name: Kestrel 3
+
+  # Surface threats
+  - proto: test-corvette
+    position: [140, -10]
+    velocity: [-0.2, 0.0]
+    name: Viper 1
+
+  - proto: test-corvette
+    position: [160, 40]
+    velocity: [-0.2, -0.1]
+    name: Viper 2

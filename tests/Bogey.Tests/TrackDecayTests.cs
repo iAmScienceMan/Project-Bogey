@@ -14,7 +14,7 @@ public sealed class TrackDecayTests
     public void ContactLeavingSensorRange_GoesStale_ThenDropped()
     {
         
-        List<PrototypeDefinition> scenario = new()
+        List<SpawnSpec> scenario = new()
         {
             TestScenarios.FriendlySensorAtOrigin(rangeKm: 60f, maxDetect: 1.0f, falloff: 1.0f),
             TestScenarios.Hostile(
@@ -56,7 +56,7 @@ public sealed class TrackDecayTests
     [Test]
     public void StaleTrack_HasGrowingPositionalError()
     {
-        List<PrototypeDefinition> scenario = new()
+        List<SpawnSpec> scenario = new()
         {
             TestScenarios.FriendlySensorAtOrigin(rangeKm: 60f, maxDetect: 1.0f, falloff: 1.0f),
             TestScenarios.Hostile(

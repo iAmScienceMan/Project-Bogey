@@ -1,9 +1,9 @@
+id: submersible
 name: Silt-class submersible
 faction: Hostile
-transform:
-  position: [30, 70]
-  velocity: [0.2, -0.3]
 signature: 0.18
 classification:
   domain: Subsurface
   typeName: Silt-class submersible
+health:
+  max: 120

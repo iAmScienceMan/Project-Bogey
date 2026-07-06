@@ -11,7 +11,7 @@ namespace Bogey.Tests;
 [TestFixture]
 public sealed class DebugRepositionTests
 {
-    private static List<PrototypeDefinition> Scenario() => new()
+    private static List<SpawnSpec> Scenario() => new()
     {
         TestScenarios.FriendlyMover(0f, 0f, maxSpeedKmPerTick: 0.4f),
         TestScenarios.Hostile(40f, 25f, 1.8f, 1.1f, 0.55f, ContactDomain.Air, "Wraith-class interceptor"),
@@ -20,7 +20,7 @@ public sealed class DebugRepositionTests
     [Test]
     public void DebugSetPosition_MovesTheAddressedEntity_IncludingHostiles()
     {
-        SimRuntime sim = new(Scenario(), seed: 1337);
+        SimRuntime sim = TestScenarios.Build(Scenario(), seed: 1337);
 
         
         GroundTruthEntry hostile = sim.DumpGroundTruth().First(e => e.Faction == FactionType.Hostile);
@@ -40,7 +40,7 @@ public sealed class DebugRepositionTests
     [Test]
     public void DebugSetPosition_ReturnsFalse_ForUnknownEntity()
     {
-        SimRuntime sim = new(Scenario(), seed: 1337);
+        SimRuntime sim = TestScenarios.Build(Scenario(), seed: 1337);
         int unknown = sim.DumpGroundTruth().Max(e => e.EntityId) + 1000;
 
         Assert.That(sim.DebugSetPosition(unknown, Vector2.Zero), Is.False);

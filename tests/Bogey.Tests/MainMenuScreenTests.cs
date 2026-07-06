@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Bogey.Renderer.App;
 using Bogey.Renderer.Ui.Controls;
 using Bogey.Renderer.Ui.Screens;
 using Bogey.Shared.Changelog;
@@ -20,7 +21,7 @@ public sealed class MainMenuScreenTests
     }
 
     private static MainMenuScreen Menu(ConfigurationManager cfg, IChangelogManager? changelog = null)
-        => new(cfg, changelog ?? new FakeChangelog());
+        => new(cfg, changelog ?? new FakeChangelog(), new[] { new ScenarioInfo("default", "Meridian Patrol") });
 
     private static Button Button(Control root, string text)
         => root.SelfAndDescendants().OfType<Button>().First(b => b.Text == text);

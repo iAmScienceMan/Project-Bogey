@@ -17,10 +17,16 @@ public sealed class TacticalMapRenderer
     private const float MarkerRadiusKm = 2.25f;
     private const float OwnMarkerKm = 2.25f;
     private const float SpriteSideKm = 7.5f;
+    private const float MunitionSideKm = 4.0f;
     private const float MinMarkerPx = 4f;
     private const float MinSpritePx = 14f;
+    private const float MinMunitionPx = 10f;
 
     private static readonly Rgba OwnColor = new(0.30f, 0.85f, 1.0f);
+    private static readonly Rgba LockColor = new(1.0f, 0.40f, 0.30f);
+    private static readonly Rgba HullBackColor = new(0.15f, 0.15f, 0.18f, 0.6f);
+    private static readonly Rgba MunitionColor = new(0.55f, 0.90f, 1.0f);
+    private static readonly Rgba MunitionLockedColor = new(1.0f, 0.80f, 0.40f);
     private static readonly Rgba SelectColor = new(1.0f, 0.95f, 0.35f);
     private static readonly Rgba OrderColor = new(0.40f, 1.0f, 0.55f);
     private static readonly Rgba GlyphColor = new(0.97f, 0.97f, 0.97f);
@@ -37,6 +43,7 @@ public sealed class TacticalMapRenderer
         TextBatch text,
         float frameDt,
         string? selectedUnit,
+        int? selectedTarget,
         IReadOnlyDictionary<string, Vector2> pendingOrders)
     {
         TrackPictureSnapshot? current = session.Current;
@@ -47,10 +54,15 @@ public sealed class TacticalMapRenderer
 
         UpdateTrackVisuals(current, session.Previous, session.Alpha, frameDt);
 
-        
+
         foreach (int id in SortedVisualIds())
         {
             DrawTrack(prims, sprites, entitySprites, text, camera, _visuals[id]);
+        }
+
+        if (selectedTarget is { } targetId && _visuals.TryGetValue(targetId, out TrackVisual? targetVisual))
+        {
+            DrawTargetReticle(prims, camera, targetVisual.Position);
         }
 
         foreach ((OwnUnitView unit, Vector2 worldPos) in Interp.OwnUnits(session))
@@ -58,10 +70,41 @@ public sealed class TacticalMapRenderer
             bool selected = string.Equals(unit.Name, selectedUnit, StringComparison.Ordinal);
             DrawOwnUnit(prims, sprites, entitySprites, text, camera, unit, worldPos, selected);
 
+            if (selected && unit.LockedTrackId is { } lockedId && _visuals.TryGetValue(lockedId, out TrackVisual? lockedVisual))
+            {
+                DrawLockReticle(prims, text, camera, lockedVisual.Position);
+            }
+
             if (pendingOrders.TryGetValue(unit.Name, out Vector2 destination))
             {
                 DrawOrder(prims, camera, worldPos, destination);
             }
+        }
+
+        foreach (MunitionView munition in current.Munitions)
+        {
+            Vector2 world = Interp.MunitionPosition(session, munition.Id, munition.Position);
+            DrawMunition(prims, sprites, entitySprites, camera, munition, world);
+        }
+    }
+
+    private static void DrawMunition(PrimitiveBatch prims, SpriteBatch sprites, EntitySprites entitySprites, Camera2D camera, MunitionView munition, Vector2 world)
+    {
+        Vector2 screen = camera.WorldToScreen(world);
+        Rgba color = munition.Locked ? MunitionLockedColor : MunitionColor;
+        float rotation = -munition.HeadingRadians;
+
+        Texture? sprite = entitySprites.Munition;
+        if (sprite is not null)
+        {
+            float sidePx = MathF.Max(MinMunitionPx, camera.KmToPixels(MunitionSideKm));
+            sprites.Draw(sprite, screen, new Vector2(sidePx, sidePx), color, rotation);
+        }
+        else
+        {
+            float length = MathF.Max(MinMunitionPx, camera.KmToPixels(MunitionSideKm));
+            Vector2 dir = new(MathF.Cos(rotation), MathF.Sin(rotation));
+            prims.Line(screen - (dir * length * 0.5f), screen + (dir * length * 0.5f), color);
         }
     }
 
@@ -241,7 +284,45 @@ public sealed class TacticalMapRenderer
             prims.Ring(screen, halfExtentPx + 6f, SelectColor, 40);
         }
 
+        if (unit.HullMax > 0f)
+        {
+            DrawHullBar(prims, screen + new Vector2(0f, halfExtentPx + 8f), unit.HullCurrent / unit.HullMax);
+        }
+
         text.Text(screen + new Vector2(halfExtentPx + 4f, -halfExtentPx), 12f, OwnColor, unit.Name);
+    }
+
+    private static void DrawHullBar(PrimitiveBatch prims, Vector2 center, float fraction)
+    {
+        const float width = 22f;
+        const float height = 3f;
+        fraction = Math.Clamp(fraction, 0f, 1f);
+
+        Vector2 min = center - new Vector2(width * 0.5f, height * 0.5f);
+        Vector2 max = center + new Vector2(width * 0.5f, height * 0.5f);
+        prims.FilledQuad(min, max, HullBackColor);
+
+        Rgba fill = new(1f - fraction, fraction * 0.9f, 0.15f, 0.9f);
+        prims.FilledQuad(min, new Vector2(min.X + (width * fraction), max.Y), fill);
+    }
+
+    private static void DrawLockReticle(PrimitiveBatch prims, TextBatch text, Camera2D camera, Vector2 world)
+    {
+        Vector2 screen = camera.WorldToScreen(world);
+        float r = 19f;
+        prims.Ring(screen, r, LockColor, 28);
+        text.Text(screen + new Vector2(r + 4f, -6f), 11f, LockColor, "LOCK");
+    }
+
+    private static void DrawTargetReticle(PrimitiveBatch prims, Camera2D camera, Vector2 world)
+    {
+        Vector2 screen = camera.WorldToScreen(world);
+        float r = 14f;
+        prims.Ring(screen, r, SelectColor, 28);
+        prims.Line(screen + new Vector2(-r - 4f, 0f), screen + new Vector2(-r + 4f, 0f), SelectColor);
+        prims.Line(screen + new Vector2(r - 4f, 0f), screen + new Vector2(r + 4f, 0f), SelectColor);
+        prims.Line(screen + new Vector2(0f, -r - 4f), screen + new Vector2(0f, -r + 4f), SelectColor);
+        prims.Line(screen + new Vector2(0f, r - 4f), screen + new Vector2(0f, r + 4f), SelectColor);
     }
 
     private static void DrawOrder(PrimitiveBatch prims, Camera2D camera, Vector2 fromWorld, Vector2 destWorld)

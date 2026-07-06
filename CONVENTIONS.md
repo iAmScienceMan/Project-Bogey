@@ -22,7 +22,7 @@ Same seed + same scenario means an identical run. This is for replays and networ
 
 - One seeded `System.Random` is injected into the sim and is the only source of randomness.
 - Time is only counted by `SimClock` (1 tick = 1 simulated second).
-- Entity queries return ids in ascending order, and prototypes load in filename order, so the RNG draw sequence is stable across runs and machines.
+- Entity queries return ids in ascending order, and a scenario spawns its entries in listed order, so the RNG draw sequence is stable across runs and machines.
 
 ## The minimal engine
 

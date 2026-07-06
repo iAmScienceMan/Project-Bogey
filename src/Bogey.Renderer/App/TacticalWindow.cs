@@ -29,6 +29,7 @@ public sealed class TacticalWindow : IDisposable, IAppControl
 {
     private const float ClickThresholdPx = 5f;
     private const float UnitPickRadiusPx = 16f;
+    private const float ContactPickRadiusPx = 16f;
     private const float OrderArriveKm = 2f;
 
     private enum Screen
@@ -43,6 +44,7 @@ public sealed class TacticalWindow : IDisposable, IAppControl
     private readonly IConfigurationManager _cfg;
     private readonly IChangelogManager _changelog;
     private readonly SimBootFactory _sessionFactory;
+    private readonly IReadOnlyList<ScenarioInfo> _scenarios;
     private readonly SimConsoleContext _consoleContext = new();
     private readonly Dictionary<string, Vector2> _pendingOrders = new(StringComparer.Ordinal);
 
@@ -76,17 +78,20 @@ public sealed class TacticalWindow : IDisposable, IAppControl
     private Button? _hoveredButton;
     private LineEdit? _focused;
     private string? _selectedUnit;
+    private int? _selectedTarget;
 
     public TacticalWindow(
         RendererOptions options,
         IConfigurationManager cfg,
         IChangelogManager changelog,
-        SimBootFactory sessionFactory)
+        SimBootFactory sessionFactory,
+        IReadOnlyList<ScenarioInfo> scenarios)
     {
         _options = options;
         _cfg = cfg;
         _changelog = changelog;
         _sessionFactory = sessionFactory;
+        _scenarios = scenarios;
     }
 
     public void Run()
@@ -133,7 +138,7 @@ public sealed class TacticalWindow : IDisposable, IAppControl
 
         _console = new DevConsole(Logger.LogManager, new object[] { this, _cfg, _consoleContext });
 
-        _mainMenu = new MainMenuScreen(_cfg, _changelog);
+        _mainMenu = new MainMenuScreen(_cfg, _changelog, _scenarios);
         _mainMenu.OnDeploy += Deploy;
         _mainMenu.OnChangelog += ShowChangelog;
         _mainMenu.OnOptions += ShowOptions;
@@ -195,11 +200,12 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         _camera!.ResizeViewport(viewport);
 
         SetLayer(RenderLayer.World);
-        _map!.Draw(_session, _camera, _prims, _sprites, _entitySprites, _text, dt, _selectedUnit, _pendingOrders);
+        _map!.Draw(_session, _camera, _prims, _sprites, _entitySprites, _text, dt, _selectedUnit, _selectedTarget, _pendingOrders);
         _debugOverlay?.Draw(_prims, _text, _camera, viewport);
 
         SetLayer(RenderLayer.Ui);
         _hud!.SelectedUnit = _selectedUnit;
+        _hud.SelectedTarget = _selectedTarget;
         _hud.HoveredButton = _hoveredButton;
         _hud.FrameUpdate(dt);
         _hud.Arrange(new UiRect(0f, 0f, viewport.X, viewport.Y));
@@ -262,18 +268,20 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         _debugOverlay = boot.Overlay;
         _consoleContext.Session = _session;
         _consoleContext.Overlay = _debugOverlay;
+        _consoleContext.Prototypes = boot.Prototypes;
         _map = new TacticalMapRenderer();
         _camera = new Camera2D(LogicalSize(), Vector2.Zero, _cfg.GetCVar(CVars.RenderZoom));
         _hud = new TacticalHud(_session, _debugOverlay, Recenter, _console.RunCommand);
 
-        SimSpeed speed = _cfg.GetCVar(CVars.GameStartPaused)
-            ? SimSpeed.Paused
-            : SpeedFromInt(_cfg.GetCVar(CVars.GameDefaultSpeed));
+        int speed = _cfg.GetCVar(CVars.GameStartPaused)
+            ? 0
+            : _cfg.GetCVar(CVars.GameDefaultSpeed);
         _session.SetSpeed(speed);
         Recenter();
 
         ClearInteraction();
         _selectedUnit = null;
+        _selectedTarget = null;
         _pendingOrders.Clear();
         _screen = Screen.Tactical;
     }
@@ -296,6 +304,29 @@ public sealed class TacticalWindow : IDisposable, IAppControl
 
     private void ShowMainMenu()
     {
+        ClearInteraction();
+        _screen = Screen.MainMenu;
+    }
+
+    private void StopSimulation()
+    {
+        if (_screen != Screen.Tactical)
+        {
+            return;
+        }
+
+        _session = null;
+        _debugOverlay = null;
+        _map = null;
+        _camera = null;
+        _hud = null;
+        _consoleContext.Session = null;
+        _consoleContext.Overlay = null;
+        _consoleContext.Prototypes = Array.Empty<string>();
+
+        _selectedUnit = null;
+        _selectedTarget = null;
+        _pendingOrders.Clear();
         ClearInteraction();
         _screen = Screen.MainMenu;
     }
@@ -599,15 +630,15 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         switch (key)
         {
             case Key.Space:
-                _console.RunCommand(_session!.Speed == SimSpeed.Paused ? "speed normal" : "speed paused");
+                _console.RunCommand(_session!.Speed == 0 ? "speed 1" : "speed 0");
                 break;
             case Key.Number1:
             case Key.Keypad1:
-                _console.RunCommand("speed normal");
+                _console.RunCommand("speed 1");
                 break;
             case Key.Number2:
             case Key.Keypad2:
-                _console.RunCommand("speed fast");
+                _console.RunCommand("speed 10");
                 break;
             case Key.C:
                 Recenter();
@@ -620,8 +651,14 @@ public sealed class TacticalWindow : IDisposable, IAppControl
 
                 break;
             case Key.Escape:
-            case Key.Q:
-                _window?.Close();
+                if (_selectedUnit is not null || _selectedTarget is not null)
+                {
+                    _selectedUnit = null;
+                    _selectedTarget = null;
+                    break;
+                }
+
+                StopSimulation();
                 break;
         }
     }
@@ -642,10 +679,17 @@ public sealed class TacticalWindow : IDisposable, IAppControl
 
     private void HandleClick(Vector2 px)
     {
-        string? hit = PickOwnUnit(px);
-        if (hit is not null)
+        string? hitUnit = PickOwnUnit(px);
+        if (hitUnit is not null)
         {
-            _selectedUnit = hit;
+            _selectedUnit = string.Equals(_selectedUnit, hitUnit, StringComparison.Ordinal) ? null : hitUnit;
+            return;
+        }
+
+        int? hitContact = PickContact(px);
+        if (hitContact is not null)
+        {
+            _selectedTarget = _selectedTarget == hitContact ? null : hitContact;
             return;
         }
 
@@ -657,6 +701,30 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         Vector2 destination = _camera!.ScreenToWorld(px);
         _session!.Enqueue(new MoveCommand { UnitName = _selectedUnit, Destination = destination });
         _pendingOrders[_selectedUnit] = destination;
+    }
+
+    private int? PickContact(Vector2 px)
+    {
+        if (_camera is null || _session?.Current is not { } snapshot)
+        {
+            return null;
+        }
+
+        int? best = null;
+        float bestDistance = ContactPickRadiusPx;
+
+        foreach (Track track in snapshot.Tracks)
+        {
+            Vector2 screen = _camera.WorldToScreen(track.EstimatedPosition);
+            float distance = Vector2.Distance(screen, px);
+            if (distance <= bestDistance)
+            {
+                bestDistance = distance;
+                best = track.TrackId;
+            }
+        }
+
+        return best;
     }
 
     private void Recenter()
@@ -720,13 +788,6 @@ public sealed class TacticalWindow : IDisposable, IAppControl
             _window.Size = new Vector2D<int>(_window.Size.X, Math.Max(240, value));
         }
     }
-
-    private static SimSpeed SpeedFromInt(int value) => value switch
-    {
-        0 => SimSpeed.Paused,
-        2 => SimSpeed.Fast,
-        _ => SimSpeed.Normal,
-    };
 
     private void OnFramebufferResize(Vector2D<int> size)
     {

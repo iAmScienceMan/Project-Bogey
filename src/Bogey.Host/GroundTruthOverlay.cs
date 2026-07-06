@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Numerics;
@@ -32,6 +33,7 @@ public sealed class GroundTruthOverlay : IDebugOverlay
 
     private DisplayMode _mode = DisplayMode.LabelsAndMarkers;
     private int? _selectedEntity;
+    private bool _showSeekers;
 
     public GroundTruthOverlay(SimRuntime sim) => _sim = sim;
 
@@ -45,6 +47,31 @@ public sealed class GroundTruthOverlay : IDebugOverlay
         };
 
         return ModeName(_mode);
+    }
+
+    public string ToggleSeekers()
+    {
+        _showSeekers = !_showSeekers;
+        return _showSeekers ? "on" : "off";
+    }
+
+    public IReadOnlyList<string> DescribeMunitions()
+    {
+        List<string> lines = new();
+        foreach (MunitionDebug munition in _sim.DumpMunitions())
+        {
+            lines.Add(string.Create(CultureInfo.InvariantCulture,
+                $"#{munition.Id} {munition.Faction} {munition.Seeker} {PhaseOf(munition)} " +
+                $"fov {munition.FovDegrees:0}° acq {munition.AcquisitionRangeKm:0}km " +
+                $"datum ({munition.Datum.X:0}, {munition.Datum.Y:0})"));
+        }
+
+        if (lines.Count == 0)
+        {
+            lines.Add("No munitions in flight.");
+        }
+
+        return lines;
     }
 
     public bool Teleport(int entityId, Vector2 worldPosition) =>
@@ -103,7 +130,79 @@ public sealed class GroundTruthOverlay : IDebugOverlay
             }
         }
 
+        if (_showSeekers)
+        {
+            DrawSeekers(prims, text, camera);
+        }
+
         DrawFooter(text, viewport, selectedName);
+    }
+
+    private void DrawSeekers(PrimitiveBatch prims, TextBatch text, Camera2D camera)
+    {
+        foreach (MunitionDebug munition in _sim.DumpMunitions())
+        {
+            Rgba color = ColorFor(munition.Faction);
+            Vector2 screen = camera.WorldToScreen(munition.Position);
+
+            if (munition.AcquisitionRangeKm > 0f)
+            {
+                prims.Ring(screen, camera.KmToPixels(munition.AcquisitionRangeKm), color.WithAlpha(0.22f), 48);
+            }
+
+            if (munition.FovDegrees > 0f && munition.FovDegrees < 360f && munition.AcquisitionRangeKm > 0f)
+            {
+                DrawSeekerCone(prims, camera, munition, color);
+            }
+
+            if (!munition.DatumPassed)
+            {
+                prims.Line(screen, camera.WorldToScreen(munition.Datum), color.WithAlpha(0.3f));
+            }
+
+            if (munition.Locked && munition.TargetPosition is { } targetPosition)
+            {
+                prims.Line(screen, camera.WorldToScreen(targetPosition), color);
+            }
+
+            text.Text(screen + new Vector2(7f, -14f), 10f, LabelColor,
+                munition.Seeker + " " + PhaseOf(munition));
+        }
+    }
+
+    private static void DrawSeekerCone(PrimitiveBatch prims, Camera2D camera, MunitionDebug munition, Rgba color)
+    {
+        float half = munition.FovDegrees * 0.5f * (MathF.PI / 180f);
+        float acq = munition.AcquisitionRangeKm;
+        Rgba edge = color.WithAlpha(0.5f);
+
+        Vector2 Edge(float angle)
+            => camera.WorldToScreen(munition.Position + (new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * acq));
+
+        Vector2 apex = camera.WorldToScreen(munition.Position);
+        float start = munition.HeadingRadians - half;
+        Vector2 previous = Edge(start);
+        prims.Line(apex, previous, edge);
+
+        const int segments = 16;
+        for (int i = 1; i <= segments; i++)
+        {
+            Vector2 point = Edge(start + ((2f * half) * (i / (float)segments)));
+            prims.Line(previous, point, edge);
+            previous = point;
+        }
+
+        prims.Line(apex, previous, edge);
+    }
+
+    private static string PhaseOf(MunitionDebug munition)
+    {
+        if (munition.Locked)
+        {
+            return "LOCKED";
+        }
+
+        return munition.Seeker == SeekerType.Gps ? "GPS" : "SEEK";
     }
 
     private bool TryPick(Vector2 screenPx, Camera2D camera, out int entityId)
@@ -130,13 +229,15 @@ public sealed class GroundTruthOverlay : IDebugOverlay
     private void DrawFooter(TextBatch text, Vector2 viewport, string? selectedName)
     {
         string mode = _mode == DisplayMode.LabelsAndMarkers ? "labels" : "markers";
-        text.Text(new Vector2(16f, viewport.Y - 40f), 12f, LabelColor,
-            "DEBUG GROUND TRUTH [" + mode + "]   G: declutter   RIGHT-CLICK: move any entity");
+        string seekers = _showSeekers ? "on" : "off";
+        string footer =
+            "DEBUG GROUND TRUTH [" + mode + "]   seekers: [" + seekers + "]";
+        text.Text(new Vector2(viewport.X - TextBatch.Measure(footer, 12f) - 16f, viewport.Y - 40f), 12f, LabelColor, footer);
 
         if (selectedName is not null)
         {
-            text.Text(new Vector2(16f, viewport.Y - 58f), 12f, SelectColor,
-                "SELECTED (truth): " + selectedName + " - right-click the map to reposition it");
+            string selection = "SELECTED (truth): " + selectedName + " - right-click the map to reposition it";
+            text.Text(new Vector2(viewport.X - TextBatch.Measure(selection, 12f) - 16f, viewport.Y - 58f), 12f, SelectColor, selection);
         }
     }
 

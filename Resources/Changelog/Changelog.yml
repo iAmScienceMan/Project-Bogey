@@ -62,3 +62,31 @@ Entries:
   Changes:
     - Type: Add
       Message: Persistent settings
+- Id: 10
+  Author: iamscienceman
+  Time: '2026-07-03T12:00:00.0000000+00:00'
+  Changes:
+    - Type: Add
+      Message: Added single-target radar locks (STT) - datalink missiles are only guided while their target stays locked
+    - Type: Add
+      Message: Added a salvo selector, lock controls and unit HP to the engage panel, plus HP bars on the map
+    - Type: Tweak
+      Message: Weapons can now be fired at unclassified contacts; warheads are just far less effective off-domain
+    - Type: Tweak
+      Message: Missiles now fly a lead-intercept course and expire on kinetic energy instead of a tick timer
+    - Type: Tweak
+      Message: Seekers acquire realistically - IR heads lock whatever crosses the basket, and misses fly straight past instead of circling
+    - Type: Tweak
+      Message: Weapon range and target domains moved into the missile prototypes; salvo size is the player's call now
+    - Type: Fix
+      Message: Fixed missiles orbiting their target after overshooting it in a single tick
+    - Type: Fix
+      Message: Fixed fast ships refusing move orders shorter than one tick of travel
+    - Type: Fix
+      Message: Fixed HUD text bleeding through tooltips and the engage panel covering the debug footer
+    - Type: Fix
+      Message: Fixed datalink missiles circling a target's lingering blip after it was destroyed - they now go inertial and fly straight past
+    - Type: Fix
+      Message: Fixed a crash when one missile's blast destroyed another missile that was still in flight
+    - Type: Tweak
+      Message: The debug seeker view stops drawing the datum line once a missile has flown past its aimpoint

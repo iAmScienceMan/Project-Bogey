@@ -25,7 +25,7 @@ public sealed class SignatureBehaviorTests
 
     private static float FinalConfidence(float signature, int seed, int ticks)
     {
-        List<PrototypeDefinition> scenario = new()
+        List<SpawnSpec> scenario = new()
         {
             TestScenarios.FriendlySensorAtOrigin(rangeKm: 200f, maxDetect: 1.0f, falloff: 1.0f),
             TestScenarios.Hostile(

@@ -10,21 +10,19 @@ namespace Bogey.Host;
 public sealed class SimSession : ISimSession
 {
     private const int MaxStepsPerFrame = 12;
+    public const int MinSpeed = 0;
+    public const int MaxSpeed = 100;
 
     private readonly SimRuntime _sim;
-    private readonly double _normalTicksPerSecond;
-    private readonly double _fastTicksPerSecond;
     private readonly Queue<SimCommand> _commands = new();
     private readonly object _gate = new();
 
     private double _accumulator;
-    private SimSpeed _speed = SimSpeed.Normal;
+    private int _speed = 1;
 
-    public SimSession(SimRuntime sim, double normalTicksPerSecond = 1.0, double fastTicksPerSecond = 10.0)
+    public SimSession(SimRuntime sim)
     {
         _sim = sim;
-        _normalTicksPerSecond = normalTicksPerSecond > 0 ? normalTicksPerSecond : 1.0;
-        _fastTicksPerSecond = fastTicksPerSecond > 0 ? fastTicksPerSecond : 10.0;
 
         Current = _sim.PublishSnapshot();
     }
@@ -35,7 +33,7 @@ public sealed class SimSession : ISimSession
 
     public float Alpha { get; private set; }
 
-    public SimSpeed Speed => _speed;
+    public int Speed => _speed;
 
     public int Tick => Current?.Tick ?? 0;
 
@@ -46,7 +44,7 @@ public sealed class SimSession : ISimSession
             realDeltaSeconds = 0;
         }
 
-        _accumulator += realDeltaSeconds * TicksPerSecond(_speed);
+        _accumulator += realDeltaSeconds * _speed;
 
         int steps = 0;
         while (_accumulator >= 1.0 && steps < MaxStepsPerFrame)
@@ -64,7 +62,7 @@ public sealed class SimSession : ISimSession
         Alpha = (float)Math.Clamp(_accumulator, 0.0, 1.0);
     }
 
-    public void SetSpeed(SimSpeed speed) => _speed = speed;
+    public void SetSpeed(int speed) => _speed = Math.Clamp(speed, MinSpeed, MaxSpeed);
 
     public void Enqueue(SimCommand command)
     {
@@ -97,18 +95,24 @@ public sealed class SimSession : ISimSession
                 command = _commands.Dequeue();
             }
 
-            if (command is MoveCommand move)
+            switch (command)
             {
-                _sim.IssueMoveOrder(move.UnitName, move.Destination);
+                case MoveCommand move:
+                    _sim.IssueMoveOrder(move.UnitName, move.Destination);
+                    break;
+                case SpawnCommand spawn:
+                    _sim.SpawnFromPrototype(spawn.PrototypeId, spawn.Position, spawn.Velocity);
+                    break;
+                case EngageCommand engage:
+                    _sim.IssueEngagement(engage.UnitName, engage.TrackId, engage.Weapon, engage.Count);
+                    break;
+                case PostureCommand posture:
+                    _sim.SetPosture(posture.UnitName, posture.Posture);
+                    break;
+                case LockCommand lockOrder:
+                    _sim.SetLock(lockOrder.UnitName, lockOrder.TrackId);
+                    break;
             }
         }
     }
-
-    private double TicksPerSecond(SimSpeed speed) => speed switch
-    {
-        SimSpeed.Paused => 0.0,
-        SimSpeed.Normal => _normalTicksPerSecond,
-        SimSpeed.Fast => _fastTicksPerSecond,
-        _ => _normalTicksPerSecond,
-    };
 }
