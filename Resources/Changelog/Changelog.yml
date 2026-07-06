@@ -67,26 +67,26 @@ Entries:
   Time: '2026-07-03T12:00:00.0000000+00:00'
   Changes:
     - Type: Add
-      Message: Added single-target radar locks (STT) - datalink missiles are only guided while their target stays locked
+      Message: Added single-target radar locks (STT)
     - Type: Add
-      Message: Added a salvo selector, lock controls and unit HP to the engage panel, plus HP bars on the map
+      Message: Added salvo selector, lock controls and unit HP to the engage panel, plus HP bars on the map
     - Type: Tweak
-      Message: Weapons can now be fired at unclassified contacts; warheads are just far less effective off-domain
+      Message: Weapons can be fired at unclassified contacts, less effective off-domain
     - Type: Tweak
-      Message: Missiles now fly a lead-intercept course and expire on kinetic energy instead of a tick timer
+      Message: Missiles fly a lead-intercept course and expire on kinetic energy
     - Type: Tweak
-      Message: Seekers acquire realistically - IR heads lock whatever crosses the basket, and misses fly straight past instead of circling
+      Message: Seekers acquire realistically
     - Type: Tweak
-      Message: Weapon range and target domains moved into the missile prototypes; salvo size is the player's call now
+      Message: Moved weapon range and target domains into missile prototypes; salvo size is player-set
     - Type: Fix
-      Message: Fixed missiles orbiting their target after overshooting it in a single tick
+      Message: Fixed missiles orbiting their target after overshooting it
     - Type: Fix
-      Message: Fixed fast ships refusing move orders shorter than one tick of travel
+      Message: Fixed fast ships refusing sub-tick move orders
     - Type: Fix
-      Message: Fixed HUD text bleeding through tooltips and the engage panel covering the debug footer
+      Message: Fixed HUD text bleeding through tooltips and the engage panel
     - Type: Fix
-      Message: Fixed datalink missiles circling a target's lingering blip after it was destroyed - they now go inertial and fly straight past
+      Message: Fixed datalink missiles circling a destroyed target's blip
     - Type: Fix
-      Message: Fixed a crash when one missile's blast destroyed another missile that was still in flight
+      Message: Fixed a crash when a missile blast destroyed another missile in flight
     - Type: Tweak
-      Message: The debug seeker view stops drawing the datum line once a missile has flown past its aimpoint
+      Message: Debug seeker view stops drawing the datum line past the aimpoint
