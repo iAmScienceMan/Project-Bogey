@@ -1,6 +1,9 @@
+using Lattice.Sim.Engine;
+
 namespace Content.Shared.Components;
 
-public sealed class Identity
+[RegisterComponent]
+public sealed class Identity : Component
 {
     public string Name { get; set; } = string.Empty;
 }

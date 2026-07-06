@@ -1,3 +1,5 @@
+using Lattice.Sim.Engine;
+
 namespace Content.Shared.Components;
 
 
@@ -9,7 +11,8 @@ public enum FactionType
 }
 
 
-public sealed class Faction
+[RegisterComponent]
+public sealed class Faction : Component
 {
     public FactionType Side { get; set; }
 }

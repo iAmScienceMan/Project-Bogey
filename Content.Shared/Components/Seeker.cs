@@ -1,3 +1,5 @@
+using Lattice.Sim.Engine;
+
 namespace Content.Shared.Components;
 
 public enum SeekerType
@@ -10,7 +12,8 @@ public enum SeekerType
     Gps,
 }
 
-public sealed class Seeker
+[RegisterComponent]
+public sealed class Seeker : Component
 {
     public SeekerType Type { get; set; }
 

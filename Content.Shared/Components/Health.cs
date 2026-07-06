@@ -1,6 +1,9 @@
+using Lattice.Sim.Engine;
+
 namespace Content.Shared.Components;
 
-public sealed class Health
+[RegisterComponent]
+public sealed class Health : Component
 {
     public float Max { get; set; }
 

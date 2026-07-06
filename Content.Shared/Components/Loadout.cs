@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 
+using Lattice.Sim.Engine;
+
 namespace Content.Shared.Components;
 
 public sealed class WeaponMount
@@ -21,7 +23,8 @@ public sealed class WeaponMount
     public float PointDefenseRangeKm { get; set; }
 }
 
-public sealed class Loadout
+[RegisterComponent]
+public sealed class Loadout : Component
 {
     public List<WeaponMount> Mounts { get; set; } = new();
 }

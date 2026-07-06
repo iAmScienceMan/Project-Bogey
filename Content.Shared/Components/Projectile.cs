@@ -1,9 +1,12 @@
 using System.Collections.Generic;
 using System.Numerics;
 
+using Lattice.Sim.Engine;
+
 namespace Content.Shared.Components;
 
-public sealed class Projectile
+[RegisterComponent]
+public sealed class Projectile : Component
 {
     public int OwnerEntity { get; set; }
 

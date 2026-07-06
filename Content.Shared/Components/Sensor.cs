@@ -1,6 +1,9 @@
+using Lattice.Sim.Engine;
+
 namespace Content.Shared.Components;
 
-public sealed class Sensor
+[RegisterComponent]
+public sealed class Sensor : Component
 {
     
     public float RangeKm { get; set; }

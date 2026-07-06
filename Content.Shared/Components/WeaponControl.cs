@@ -1,3 +1,5 @@
+using Lattice.Sim.Engine;
+
 namespace Content.Shared.Components;
 
 public enum WeaponPosture
@@ -7,7 +9,8 @@ public enum WeaponPosture
     Free,
 }
 
-public sealed class WeaponControl
+[RegisterComponent]
+public sealed class WeaponControl : Component
 {
     public WeaponPosture Posture { get; set; } = WeaponPosture.Hold;
 

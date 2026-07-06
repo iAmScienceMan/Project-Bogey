@@ -1,3 +1,5 @@
+using Lattice.Sim.Engine;
+
 namespace Content.Shared.Components;
 
 public enum AiBehavior
@@ -6,7 +8,8 @@ public enum AiBehavior
     Aggressive,
 }
 
-public sealed class Ai
+[RegisterComponent]
+public sealed class Ai : Component
 {
     public AiBehavior Behavior { get; set; } = AiBehavior.Aggressive;
 }

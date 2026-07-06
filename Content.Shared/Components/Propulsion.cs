@@ -1,8 +1,11 @@
 using System.Numerics;
 
+using Lattice.Sim.Engine;
+
 namespace Content.Shared.Components;
 
-public sealed class Propulsion
+[RegisterComponent]
+public sealed class Propulsion : Component
 {
     public float MaxSpeedKmPerTick { get; set; }
 

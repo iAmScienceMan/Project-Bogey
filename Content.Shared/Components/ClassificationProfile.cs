@@ -1,3 +1,5 @@
+using Lattice.Sim.Engine;
+
 namespace Content.Shared.Components;
 
 
@@ -10,7 +12,8 @@ public enum ContactDomain
     Munition,
 }
 
-public sealed class ClassificationProfile
+[RegisterComponent]
+public sealed class ClassificationProfile : Component
 {
     public ContactDomain Domain { get; set; }
 

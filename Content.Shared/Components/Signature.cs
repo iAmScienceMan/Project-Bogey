@@ -1,6 +1,9 @@
+using Lattice.Sim.Engine;
+
 namespace Content.Shared.Components;
 
-public sealed class Signature
+[RegisterComponent]
+public sealed class Signature : Component
 {
     public float Value { get; set; }
 }
