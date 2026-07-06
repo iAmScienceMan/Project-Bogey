@@ -14,18 +14,25 @@ public sealed class Projectile : Component
 
     public FactionType ObserverFaction { get; set; }
 
+    [DataField]
     public float Damage { get; set; }
 
+    [DataField]
     public float DetonationRangeKm { get; set; }
 
+    [DataField]
     public float Pk { get; set; } = 1f;
 
+    [DataField]
     public float RangeKm { get; set; }
 
+    [DataField]
     public List<ContactDomain> TargetDomains { get; set; } = new();
 
+    [DataField]
     public int MotorBurnTicksRemaining { get; set; }
 
+    [DataField]
     public float DragPerTick { get; set; }
 
     public float SpeedKmPerTick { get; set; }

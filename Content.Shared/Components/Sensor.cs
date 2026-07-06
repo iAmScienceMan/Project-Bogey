@@ -6,10 +6,13 @@ namespace Content.Shared.Components;
 public sealed class Sensor : Component
 {
     
+    [DataField]
     public float RangeKm { get; set; }
 
     
+    [DataField]
     public float MaxDetectProbability { get; set; }
 
+    [DataField]
     public float FalloffExponent { get; set; }
 }

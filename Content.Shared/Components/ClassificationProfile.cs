@@ -15,8 +15,10 @@ public enum ContactDomain
 [RegisterComponent]
 public sealed class ClassificationProfile : Component
 {
+    [DataField]
     public ContactDomain Domain { get; set; }
 
     
+    [DataField]
     public string TypeName { get; set; } = string.Empty;
 }

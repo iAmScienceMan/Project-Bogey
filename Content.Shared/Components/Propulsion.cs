@@ -7,6 +7,7 @@ namespace Content.Shared.Components;
 [RegisterComponent]
 public sealed class Propulsion : Component
 {
+    [DataField]
     public float MaxSpeedKmPerTick { get; set; }
 
     

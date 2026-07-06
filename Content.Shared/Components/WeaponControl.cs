@@ -12,6 +12,7 @@ public enum WeaponPosture
 [RegisterComponent]
 public sealed class WeaponControl : Component
 {
+    [DataField]
     public WeaponPosture Posture { get; set; } = WeaponPosture.Hold;
 
     public int LockedTarget { get; set; } = -1;

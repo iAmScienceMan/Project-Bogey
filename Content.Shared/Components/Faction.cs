@@ -14,5 +14,6 @@ public enum FactionType
 [RegisterComponent]
 public sealed class Faction : Component
 {
+    [DataField]
     public FactionType Side { get; set; }
 }

@@ -11,5 +11,6 @@ public enum AiBehavior
 [RegisterComponent]
 public sealed class Ai : Component
 {
+    [DataField]
     public AiBehavior Behavior { get; set; } = AiBehavior.Aggressive;
 }
