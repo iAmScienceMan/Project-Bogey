@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\LatticeToolbox\Lattice.Sim\Lattice.Sim.csproj" />
+    <ProjectReference Include="..\LatticeToolbox\Lattice.Shared\Lattice.Shared.csproj" />
+    <ProjectReference Include="..\LatticeToolbox\Lattice.Logging\Lattice.Logging.csproj" />
+    <ProjectReference Include="..\Content.Shared\Content.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="YamlDotNet" Version="18.1.0" />
+  </ItemGroup>
+
+</Project>

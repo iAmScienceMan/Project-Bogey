@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\LatticeToolbox\Lattice.Shared\Lattice.Shared.csproj" />
+    <ProjectReference Include="..\LatticeToolbox\Lattice.Logging\Lattice.Logging.csproj" />
+  </ItemGroup>
+
+</Project>

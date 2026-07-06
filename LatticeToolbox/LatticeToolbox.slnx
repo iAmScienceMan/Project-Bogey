@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="Lattice.Logging/Lattice.Logging.csproj" />
+    <Project Path="Lattice.Renderer.Xaml.Generator/Lattice.Renderer.Xaml.Generator.csproj" />
+    <Project Path="Lattice.Shared/Lattice.Shared.csproj" />
+    <Project Path="Lattice.Sim/Lattice.Sim.csproj" />
+    <Project Path="Lattice.Renderer/Lattice.Renderer.csproj" />
+  </Folder>
+</Solution>

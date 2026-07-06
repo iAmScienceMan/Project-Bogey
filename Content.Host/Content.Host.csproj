@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(_IsPublishing)' == 'true'">
+    <DefineConstants>$(DefineConstants);BOGEY_PUBLISH</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Content.Sim\Content.Sim.csproj" />
+    <ProjectReference Include="..\Content.Renderer\Content.Renderer.csproj" />
+    <ProjectReference Include="..\Content.Shared\Content.Shared.csproj" />
+    <ProjectReference Include="..\LatticeToolbox\Lattice.Shared\Lattice.Shared.csproj" />
+    <ProjectReference Include="..\LatticeToolbox\Lattice.Logging\Lattice.Logging.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\Resources\Prototypes\**\*.yaml" Link="Resources\Prototypes\%(RecursiveDir)%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\Resources\Scenarios\**\*.yaml" Link="Resources\Scenarios\%(RecursiveDir)%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\Resources\**\*.png" Link="Resources\%(RecursiveDir)%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\Resources\**\*.ttf" Link="Resources\%(RecursiveDir)%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\Resources\**\*.yml" Link="Resources\%(RecursiveDir)%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

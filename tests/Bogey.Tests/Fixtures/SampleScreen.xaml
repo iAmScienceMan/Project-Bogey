@@ -1,7 +1,0 @@
-<!-- ReSharper disable All -->
-<Control xmlns="clr-namespace:Bogey.Renderer.Ui.Controls;assembly=Bogey.Renderer">
-  <BoxContainer Name="Bar" Orientation="Horizontal" Separation="4" Padding="5">
-    <Button Name="OkButton" Text="OK" ToolTip="Confirm" Hotkey="Enter" />
-    <Label Name="Caption" Text="hello" />
-  </BoxContainer>
-</Control>
