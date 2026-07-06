@@ -1,34 +1,35 @@
-id: test-corvette
-name: HNS Viper
-faction: Hostile
-signature: 0.7
-posture: Free
-
-ai:
-  behavior: Aggressive
-
-classification:
-  domain: Surface
-  typeName: Viper-class missile corvette
-
-sensor:
-  rangeKm: 150
-  maxDetectProbability: 0.9
-  falloffExponent: 1.5
-
-propulsion:
-  maxSpeedKmPerTick: 0.4
-
-health:
-  max: 180
-
-weapons:
-  - projectilePrototype: AGM-89
-    cooldownTicks: 20
-    magazine: 6
-
-  - pointDefense: true
-    pointDefensePk: 0.4
-    rangeKm: 8
-    cooldownTicks: 1
-    magazine: 150
+- id: test-corvette
+  name: HNS Viper
+  components:
+  - type: Identity
+    name: HNS Viper
+  - type: Faction
+    side: Hostile
+  - type: Transform
+  - type: Signature
+    value: 0.7
+  - type: Ai
+    behavior: Aggressive
+  - type: ClassificationProfile
+    domain: Surface
+    typeName: Viper-class missile corvette
+  - type: Sensor
+    rangeKm: 150
+    maxDetectProbability: 0.9
+    falloffExponent: 1.5
+  - type: Propulsion
+    maxSpeedKmPerTick: 0.4
+  - type: Health
+    max: 180
+  - type: Loadout
+    mounts:
+    - projectilePrototype: AGM-89
+      cooldownTicks: 20
+      magazineCapacity: 6
+    - pointDefense: true
+      pointDefensePk: 0.4
+      pointDefenseRangeKm: 8
+      cooldownTicks: 1
+      magazineCapacity: 150
+  - type: WeaponControl
+    posture: Free

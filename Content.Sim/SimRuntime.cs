@@ -6,9 +6,8 @@ using Content.Shared.Components;
 using Content.Shared.Events;
 using Content.Shared.Prototypes;
 using Content.Shared.Tracks;
-using Content.Sim.Content;
-using Lattice.Sim.Engine;
 using Content.Sim.Systems;
+using Lattice.Sim.Engine;
 
 namespace Content.Sim;
 
@@ -20,7 +19,7 @@ public sealed class SimRuntime
     private readonly SystemManager _systems = new();
     private readonly TrackingSystem _tracking = new();
     private readonly ILogbook _log;
-    private readonly IReadOnlyDictionary<string, PrototypeDefinition> _prototypes;
+    private readonly PrototypeManager _prototypes;
 
     public event Action<WeaponFiredEvent>? WeaponFired;
 
@@ -30,7 +29,7 @@ public sealed class SimRuntime
 
     public SimRuntime(
         ScenarioDefinition scenario,
-        IReadOnlyDictionary<string, PrototypeDefinition> prototypes,
+        PrototypeManager prototypes,
         int seed,
         SimConfig? config = null,
         ILogManager? logManager = null)
@@ -48,7 +47,7 @@ public sealed class SimRuntime
             .AddService(rng)
             .AddService(effectiveConfig)
             .AddService(log)
-            .AddService(prototypes)
+            .AddService(_prototypes)
             .AddSystem(_tracking)
             .AddSystem(new AiSystem())
             .AddSystem(new OrderingSystem())
@@ -69,13 +68,16 @@ public sealed class SimRuntime
         int spawned = 0;
         foreach (ScenarioSpawn spawn in scenario.Spawns)
         {
-            if (!_prototypes.TryGetValue(spawn.Proto, out PrototypeDefinition? prototype))
+            if (!_prototypes.Has(spawn.Proto))
             {
                 _log.Error($"Scenario '{scenario.Id}' references unknown prototype '{spawn.Proto}'; entry skipped.");
                 continue;
             }
 
-            PrototypeFactory.Spawn(_entities, prototype, PrototypeFactory.PlacementFor(spawn));
+            Vector2 velocity = spawn.Velocity.Count == 0
+                ? Vector2.Zero
+                : ToVector2(spawn.Velocity, spawn.Proto, nameof(spawn.Velocity));
+            SpawnEntity(spawn.Proto, ToVector2(spawn.Position, spawn.Proto, nameof(spawn.Position)), velocity, spawn.Name);
             spawned++;
         }
 
@@ -84,18 +86,37 @@ public sealed class SimRuntime
 
     public int CurrentTick => _clock.CurrentTick;
 
-    public IEnumerable<string> PrototypeIds => _prototypes.Keys;
+    public IEnumerable<string> PrototypeIds => _prototypes.Prototypes.Keys;
 
     public bool SpawnFromPrototype(string prototypeId, Vector2 position, Vector2 velocity)
     {
-        if (!_prototypes.TryGetValue(prototypeId, out PrototypeDefinition? prototype))
+        if (!_prototypes.Has(prototypeId))
         {
             return false;
         }
 
-        int entity = PrototypeFactory.Spawn(_entities, prototype, new Placement(position, velocity));
+        int entity = SpawnEntity(prototypeId, position, velocity, null);
         _log.Info($"Spawned entity #{entity} from prototype '{prototypeId}' at ({position.X:0.##}, {position.Y:0.##}).");
         return true;
+    }
+
+    private int SpawnEntity(string prototypeId, Vector2 position, Vector2 velocity, string? name)
+    {
+        int entity = _prototypes.SpawnEntity(_entities, prototypeId);
+
+        if (_entities.TryGetComponent(entity, out Transform transform))
+        {
+            transform.Position = position;
+            transform.Velocity = velocity;
+        }
+
+        if (name is not null && _entities.TryGetComponent(entity, out Identity identity))
+        {
+            identity.Name = name;
+        }
+
+        _bus.PublishDirected(entity, new ComponentInit());
+        return entity;
     }
 
     public void Step()
@@ -120,7 +141,7 @@ public sealed class SimRuntime
 
             if (!_entities.HasComponent<Propulsion>(entity))
             {
-                return false; 
+                return false;
             }
 
             _bus.PublishDirected(entity, new MoveOrderEvent
@@ -220,7 +241,7 @@ public sealed class SimRuntime
         };
     }
 
-    
+
     public IReadOnlyList<GroundTruthEntry> DumpGroundTruth()
     {
         List<GroundTruthEntry> entries = new();
@@ -350,7 +371,7 @@ public sealed class SimRuntime
                 Position = transform.Position,
                 HeadingRadians = HeadingOf(transform.Velocity),
                 Faction = FactionType.Friendly,
-                Seeker = seeker?.Type ?? SeekerType.Gps,
+                Seeker = seeker?.Kind ?? SeekerType.Gps,
                 Locked = seeker?.Locked ?? false,
             });
         }
@@ -379,7 +400,7 @@ public sealed class SimRuntime
                 Faction = _entities.GetComponent<Faction>(entity).Side,
                 Position = transform.Position,
                 HeadingRadians = HeadingOf(transform.Velocity),
-                Seeker = seeker?.Type ?? SeekerType.Gps,
+                Seeker = seeker?.Kind ?? SeekerType.Gps,
                 FovDegrees = seeker?.FovDegrees ?? 360f,
                 AcquisitionRangeKm = seeker?.AcquisitionRangeKm ?? 0f,
                 Locked = seeker?.Locked ?? false,
@@ -410,4 +431,15 @@ public sealed class SimRuntime
 
     private string NameOf(int entity)
         => _entities.TryGetComponent(entity, out Identity identity) ? identity.Name : $"#{entity}";
+
+    private static Vector2 ToVector2(IReadOnlyList<float> values, string prototypeName, string field)
+    {
+        if (values.Count < 2)
+        {
+            throw new InvalidOperationException(
+                $"Scenario spawn of '{prototypeName}' field '{field}' must list two numbers [x, y].");
+        }
+
+        return new Vector2(values[0], values[1]);
+    }
 }

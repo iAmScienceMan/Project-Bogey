@@ -1,26 +1,34 @@
 # forward picket, shorter sensor
-id: picket
-name: BVS Lyre (picket)
-faction: Friendly
-signature: 0.5
-posture: Defensive
-sensor:
-  rangeKm: 100
-  maxDetectProbability: 0.90
-  falloffExponent: 1.5
-propulsion:
-  maxSpeedKmPerTick: 0.7
-classification:
-  domain: Surface
-  typeName: Lyre-class corvette
-health:
-  max: 200
-weapons:
-  - projectilePrototype: AIRS-T
-    cooldownTicks: 3
-    magazine: 16
-  - pointDefense: true
-    pointDefensePk: 0.5
-    rangeKm: 8
-    cooldownTicks: 1
-    magazine: 200
+- id: picket
+  name: BVS Lyre (picket)
+  components:
+  - type: Identity
+    name: BVS Lyre (picket)
+  - type: Faction
+    side: Friendly
+  - type: Transform
+  - type: Signature
+    value: 0.5
+  - type: ClassificationProfile
+    domain: Surface
+    typeName: Lyre-class corvette
+  - type: Sensor
+    rangeKm: 100
+    maxDetectProbability: 0.90
+    falloffExponent: 1.5
+  - type: Propulsion
+    maxSpeedKmPerTick: 0.7
+  - type: Health
+    max: 200
+  - type: Loadout
+    mounts:
+    - projectilePrototype: AIRS-T
+      cooldownTicks: 3
+      magazineCapacity: 16
+    - pointDefense: true
+      pointDefensePk: 0.5
+      pointDefenseRangeKm: 8
+      cooldownTicks: 1
+      magazineCapacity: 200
+  - type: WeaponControl
+    posture: Defensive

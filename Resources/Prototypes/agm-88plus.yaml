@@ -1,25 +1,31 @@
 # AGM-88+ - anti-radiation missile
-id: AGM-88PLUS
-name: AGM-88+ HARM
-faction: Neutral
-signature: 0.2
-classification:
-  domain: Munition
-  typeName: AGM-88+ (anti-radiation)
-health:
-  max: 1
-propulsion:
-  maxSpeedKmPerTick: 4.8
-projectile:
-  damage: 60
-  detonationRangeKm: 2.0
-  pk: 0.9
-  rangeKm: 110
-  targetDomains: [Surface]
-  motorBurnTicks: 14
-  dragPerTick: 0.03
-  seeker:
-    type: AntiRadiation
+- id: AGM-88PLUS
+  name: AGM-88+ HARM
+  components:
+  - type: Identity
+    name: AGM-88+ HARM
+  - type: Faction
+    side: Neutral
+  - type: Transform
+  - type: Signature
+    value: 0.2
+  - type: ClassificationProfile
+    domain: Munition
+    typeName: AGM-88+ (anti-radiation)
+  - type: Health
+    max: 1
+  - type: Propulsion
+    maxSpeedKmPerTick: 4.8
+  - type: Projectile
+    damage: 60
+    detonationRangeKm: 2.0
+    pk: 0.9
+    rangeKm: 110
+    targetDomains: [Surface]
+    motorBurnTicksRemaining: 14
+    dragPerTick: 0.03
+  - type: Seeker
+    kind: AntiRadiation
     acquisitionRangeKm: 30
     fovDegrees: 70
     datalink: false

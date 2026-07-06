@@ -6,7 +6,7 @@ using Lattice.Sim.Engine;
 
 namespace Content.Sim.Systems;
 
-public sealed class TrackDecaySystem : SystemBase
+public sealed class TrackDecaySystem : EntitySystem
 {
     [Dependency]
     private readonly TrackingSystem _tracking = null!;

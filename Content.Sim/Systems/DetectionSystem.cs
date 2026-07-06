@@ -7,7 +7,7 @@ using Lattice.Sim.Engine;
 
 namespace Content.Sim.Systems;
 
-public sealed class DetectionSystem : SystemBase
+public sealed class DetectionSystem : EntitySystem
 {
     [Dependency]
     private readonly EntityManager _entities = null!;

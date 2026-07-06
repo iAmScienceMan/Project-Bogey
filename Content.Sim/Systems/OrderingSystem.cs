@@ -5,7 +5,7 @@ using Lattice.Sim.Engine;
 
 namespace Content.Sim.Systems;
 
-public sealed class OrderingSystem : SystemBase
+public sealed class OrderingSystem : EntitySystem
 {
     [Dependency]
     private readonly EntityManager _entities = null!;

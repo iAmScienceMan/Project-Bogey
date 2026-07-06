@@ -3,7 +3,7 @@ using Lattice.Sim.Engine;
 
 namespace Content.Sim.Systems;
 
-public sealed class MovementSystem : SystemBase
+public sealed class MovementSystem : EntitySystem
 {
     [Dependency]
     private readonly EntityManager _entities = null!;

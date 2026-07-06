@@ -31,7 +31,7 @@ public sealed class GuidanceEdgeCaseTests
             TestScenarios.CombatUnit(
                 0f, 0f, FactionType.Friendly, ContactDomain.Surface, "Shooter",
                 health: 300f, sensorRangeKm: 300f,
-                weapons: new List<WeaponMountDef>
+                weapons: new List<WeaponMount>
                 {
                     TestScenarios.Mount("flak", cooldownTicks: 1, magazine: 40),
                 }),
@@ -67,7 +67,7 @@ public sealed class GuidanceEdgeCaseTests
             TestScenarios.CombatUnit(
                 0f, 0f, FactionType.Friendly, ContactDomain.Surface, "Shooter",
                 health: 300f, sensorRangeKm: 250f,
-                weapons: new List<WeaponMountDef>
+                weapons: new List<WeaponMount>
                 {
                     TestScenarios.Mount("arh", cooldownTicks: 3, magazine: 2),
                 }),

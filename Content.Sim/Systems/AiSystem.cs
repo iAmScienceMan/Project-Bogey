@@ -6,7 +6,7 @@ using Lattice.Sim.Engine;
 
 namespace Content.Sim.Systems;
 
-public sealed class AiSystem : SystemBase
+public sealed class AiSystem : EntitySystem
 {
     [Dependency]
     private readonly EntityManager _entities = null!;

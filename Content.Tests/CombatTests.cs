@@ -8,6 +8,7 @@ using Content.Shared.Events;
 using Content.Shared.Prototypes;
 using Content.Sim;
 using Content.Sim.Content;
+using Lattice.Sim.Engine;
 using NUnit.Framework;
 
 namespace Content.Tests;
@@ -25,7 +26,7 @@ public sealed class CombatTests
             TestScenarios.CombatUnit(
                 0f, 0f, FactionType.Friendly, ContactDomain.Surface, "Shooter",
                 health: 300f, sensorRangeKm: 200f,
-                weapons: new List<WeaponMountDef>
+                weapons: new List<WeaponMount>
                 {
                     TestScenarios.Mount("missile", cooldownTicks: 6, magazine: 10),
                 }),
@@ -68,7 +69,7 @@ public sealed class CombatTests
             TestScenarios.CombatUnit(
                 0f, 0f, FactionType.Friendly, ContactDomain.Surface, "SamShip",
                 health: 300f, sensorRangeKm: 200f,
-                weapons: new List<WeaponMountDef>
+                weapons: new List<WeaponMount>
                 {
                     TestScenarios.Mount("sam", cooldownTicks: 4, magazine: 10),
                 }),
@@ -94,7 +95,7 @@ public sealed class CombatTests
             TestScenarios.CombatUnit(
                 0f, 0f, FactionType.Friendly, ContactDomain.Surface, "Hunter",
                 health: 300f, sensorRangeKm: 200f,
-                weapons: new List<WeaponMountDef>
+                weapons: new List<WeaponMount>
                 {
                     TestScenarios.Mount("ssm", cooldownTicks: 4, magazine: 10),
                 }),
@@ -120,7 +121,7 @@ public sealed class CombatTests
             TestScenarios.CombatUnit(
                 0f, 0f, FactionType.Friendly, ContactDomain.Surface, "Shooter",
                 health: 300f, sensorRangeKm: 200f,
-                weapons: new List<WeaponMountDef>
+                weapons: new List<WeaponMount>
                 {
                     TestScenarios.Mount("dud", cooldownTicks: 2, magazine: magazine),
                 }),
@@ -147,15 +148,15 @@ public sealed class CombatTests
             TestScenarios.CombatUnit(
                 0f, -40f, FactionType.Friendly, ContactDomain.Surface, "ShooterA",
                 health: 300f, sensorRangeKm: 300f,
-                weapons: new List<WeaponMountDef> { Sam("missile") }),
+                weapons: new List<WeaponMount> { Sam("missile") }),
             TestScenarios.CombatUnit(
                 0f, 0f, FactionType.Friendly, ContactDomain.Surface, "ShooterB",
                 health: 300f, sensorRangeKm: 300f,
-                weapons: new List<WeaponMountDef> { Sam("missile") }),
+                weapons: new List<WeaponMount> { Sam("missile") }),
             TestScenarios.CombatUnit(
                 0f, 40f, FactionType.Friendly, ContactDomain.Surface, "ShooterC",
                 health: 300f, sensorRangeKm: 300f,
-                weapons: new List<WeaponMountDef> { Sam("missile") }),
+                weapons: new List<WeaponMount> { Sam("missile") }),
             TestScenarios.CombatUnit(80f, 0f, FactionType.Hostile, ContactDomain.Air, "Bandit", health: 100000f, signature: 0.9f));
 
         int maxInFlight = 0;
@@ -180,7 +181,7 @@ public sealed class CombatTests
             TestScenarios.CombatUnit(
                 0f, 0f, FactionType.Friendly, ContactDomain.Surface, "Shooter",
                 health: 300f, sensorRangeKm: 200f,
-                weapons: new List<WeaponMountDef> { Sam("missile") }),
+                weapons: new List<WeaponMount> { Sam("missile") }),
             TestScenarios.CombatUnit(60f, 0f, FactionType.Hostile, ContactDomain.Air, "Bandit", health: 100f, signature: 0.9f));
 
         CombatLog log = new();
@@ -201,7 +202,7 @@ public sealed class CombatTests
             TestScenarios.CombatUnit(
                 0f, 0f, FactionType.Friendly, ContactDomain.Surface, "Shooter",
                 health: 300f, sensorRangeKm: 200f,
-                weapons: new List<WeaponMountDef>
+                weapons: new List<WeaponMount>
                 {
                     TestScenarios.Mount("missile", cooldownTicks: 2, magazine: 40),
                 }),
@@ -249,7 +250,7 @@ public sealed class CombatTests
             TestScenarios.CombatUnit(
                 0f, 0f, FactionType.Friendly, ContactDomain.Surface, "Shooter",
                 health: 300f, sensorRangeKm: 200f,
-                weapons: new List<WeaponMountDef>
+                weapons: new List<WeaponMount>
                 {
                     TestScenarios.Mount("blind", cooldownTicks: 4, magazine: 6),
                 }),
@@ -296,10 +297,9 @@ public sealed class CombatTests
 
         Assert.That(root, Is.Not.Null, "could not locate the repository Resources directory");
 
-        PrototypeLoader loader = new();
-        IReadOnlyDictionary<string, PrototypeDefinition> prototypes =
-            loader.LoadPrototypes(Path.Combine(root!.FullName, "Resources", "Prototypes"));
-        ScenarioDefinition scenario = loader.LoadScenarioFromYaml(
+        PrototypeManager prototypes = new(new ComponentFactory(new[] { typeof(Sensor).Assembly }));
+        prototypes.LoadDirectory(Path.Combine(root!.FullName, "Resources", "Prototypes"));
+        ScenarioDefinition scenario = new ScenarioLoader().LoadFromYaml(
             File.ReadAllText(Path.Combine(root.FullName, "Resources", "Scenarios", "combat-test.yaml")));
 
         SimRuntime sim = new(scenario, prototypes, seed: 12345);
@@ -331,10 +331,9 @@ public sealed class CombatTests
 
         Assert.That(root, Is.Not.Null, "could not locate the repository Resources directory");
 
-        PrototypeLoader loader = new();
-        IReadOnlyDictionary<string, PrototypeDefinition> prototypes =
-            loader.LoadPrototypes(Path.Combine(root!.FullName, "Resources", "Prototypes"));
-        ScenarioDefinition scenario = loader.LoadScenarioFromYaml(
+        PrototypeManager prototypes = new(new ComponentFactory(new[] { typeof(Sensor).Assembly }));
+        prototypes.LoadDirectory(Path.Combine(root!.FullName, "Resources", "Prototypes"));
+        ScenarioDefinition scenario = new ScenarioLoader().LoadFromYaml(
             File.ReadAllText(Path.Combine(root.FullName, "Resources", "Scenarios", "default.yaml")));
 
         SimRuntime sim = new(scenario, prototypes, seed: 777);
@@ -369,7 +368,7 @@ public sealed class CombatTests
             TestScenarios.CombatUnit(
                 0f, 0f, FactionType.Friendly, ContactDomain.Surface, "Shooter",
                 health: 300f, sensorRangeKm: 200f,
-                weapons: new List<WeaponMountDef>
+                weapons: new List<WeaponMount>
                 {
                     TestScenarios.Mount("ir", cooldownTicks: 4, magazine: 1),
                 }),
@@ -406,7 +405,7 @@ public sealed class CombatTests
             TestScenarios.CombatUnit(
                 0f, 0f, FactionType.Friendly, ContactDomain.Surface, "Shooter",
                 health: 300f, sensorRangeKm: 250f,
-                weapons: new List<WeaponMountDef>
+                weapons: new List<WeaponMount>
                 {
                     TestScenarios.Mount("arh", cooldownTicks: 4, magazine: 3),
                 }),
@@ -435,7 +434,7 @@ public sealed class CombatTests
             TestScenarios.CombatUnit(
                 0f, 0f, FactionType.Friendly, ContactDomain.Surface, "Shooter",
                 health: 300f, sensorRangeKm: 200f,
-                weapons: new List<WeaponMountDef>
+                weapons: new List<WeaponMount>
                 {
                     TestScenarios.Mount("harm", cooldownTicks: 6, magazine: 3),
                 }),
@@ -459,7 +458,7 @@ public sealed class CombatTests
             TestScenarios.CombatUnit(
                 0f, 0f, FactionType.Friendly, ContactDomain.Surface, "Shooter",
                 health: 300f, sensorRangeKm: 200f,
-                weapons: new List<WeaponMountDef>
+                weapons: new List<WeaponMount>
                 {
                     TestScenarios.Mount("aa", cooldownTicks: 4, magazine: 6),
                 },
@@ -492,7 +491,7 @@ public sealed class CombatTests
             TestScenarios.CombatUnit(
                 0f, 0f, FactionType.Friendly, ContactDomain.Surface, "Shooter",
                 health: 300f, sensorRangeKm: 200f,
-                weapons: new List<WeaponMountDef>
+                weapons: new List<WeaponMount>
                 {
                     TestScenarios.Mount("aa", cooldownTicks: 4, magazine: 6),
                 },
@@ -528,7 +527,7 @@ public sealed class CombatTests
             TestScenarios.CombatUnit(
                 0f, 0f, FactionType.Friendly, ContactDomain.Surface, "Shooter",
                 health: 300f, sensorRangeKm: 200f,
-                weapons: new List<WeaponMountDef>
+                weapons: new List<WeaponMount>
                 {
                     TestScenarios.Mount("aa", cooldownTicks: 10, magazine: 20),
                 },
@@ -564,7 +563,7 @@ public sealed class CombatTests
             TestScenarios.CombatUnit(
                 0f, 0f, FactionType.Friendly, ContactDomain.Surface, "Shooter",
                 health: 300f, sensorRangeKm: 200f,
-                weapons: new List<WeaponMountDef>
+                weapons: new List<WeaponMount>
                 {
                     TestScenarios.Mount("blind", cooldownTicks: 100, magazine: 1),
                 }),
@@ -599,7 +598,7 @@ public sealed class CombatTests
             TestScenarios.CombatUnit(
                 0f, 0f, FactionType.Friendly, ContactDomain.Surface, "Defender",
                 health: 300f, sensorRangeKm: 200f,
-                weapons: new List<WeaponMountDef>
+                weapons: new List<WeaponMount>
                 {
                     TestScenarios.Mount("aa", cooldownTicks: 4, magazine: 6),
                 },
@@ -628,12 +627,12 @@ public sealed class CombatTests
             TestScenarios.CombatUnit(
                 0f, 0f, FactionType.Friendly, ContactDomain.Surface, "Defender",
                 health: 300f, sensorRangeKm: 300f,
-                weapons: new List<WeaponMountDef> { TestScenarios.PointDefenseMount(rangeKm: 20f, cooldownTicks: 1, magazine: 50, pk: 1f) },
+                weapons: new List<WeaponMount> { TestScenarios.PointDefenseMount(rangeKm: 20f, cooldownTicks: 1, magazine: 50, pk: 1f) },
                 posture: WeaponPosture.Defensive),
             TestScenarios.CombatUnit(
                 60f, 0f, FactionType.Hostile, ContactDomain.Air, "Archer",
                 health: 100f, signature: 0.9f, sensorRangeKm: 300f,
-                weapons: new List<WeaponMountDef>
+                weapons: new List<WeaponMount>
                 {
                     TestScenarios.Mount("asm", cooldownTicks: 40, magazine: 1),
                 }));
@@ -656,7 +655,7 @@ public sealed class CombatTests
             TestScenarios.CombatUnit(
                 120f, 0f, FactionType.Hostile, ContactDomain.Air, "Hunter",
                 health: 100f, signature: 0.9f, sensorRangeKm: 200f, speed: 1.0f,
-                weapons: new List<WeaponMountDef>
+                weapons: new List<WeaponMount>
                 {
                     TestScenarios.Mount("asm", cooldownTicks: 10, magazine: 5),
                 },
@@ -683,7 +682,7 @@ public sealed class CombatTests
             TestScenarios.CombatUnit(
                 0f, 0f, FactionType.Friendly, ContactDomain.Surface, "Shooter",
                 health: 300f, sensorRangeKm: 200f,
-                weapons: new List<WeaponMountDef>
+                weapons: new List<WeaponMount>
                 {
                     TestScenarios.Mount("aa", cooldownTicks: 4, magazine: 6),
                 }),
@@ -735,7 +734,7 @@ public sealed class CombatTests
         return -1f;
     }
 
-    private static WeaponMountDef Sam(string projectile)
+    private static WeaponMount Sam(string projectile)
         => TestScenarios.Mount(projectile, cooldownTicks: 3, magazine: 20);
 
     private static SimRuntime RunPointDefenseDuel(bool withCiws, int shooters)
@@ -746,7 +745,7 @@ public sealed class CombatTests
                 0f, 0f, FactionType.Friendly, ContactDomain.Surface, "Defender",
                 health: 300f, sensorRangeKm: 300f,
                 weapons: withCiws
-                    ? new List<WeaponMountDef> { TestScenarios.PointDefenseMount(rangeKm: 20f, cooldownTicks: 1, magazine: 4, pk: 1f) }
+                    ? new List<WeaponMount> { TestScenarios.PointDefenseMount(rangeKm: 20f, cooldownTicks: 1, magazine: 4, pk: 1f) }
                     : null),
         };
 
@@ -755,7 +754,7 @@ public sealed class CombatTests
             specs.Add(TestScenarios.CombatUnit(
                 60f, 0f, FactionType.Hostile, ContactDomain.Air, "Archer" + i.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 health: 100f, signature: 0.9f, sensorRangeKm: 300f,
-                weapons: new List<WeaponMountDef>
+                weapons: new List<WeaponMount>
                 {
                     TestScenarios.Mount("asm", cooldownTicks: 40, magazine: 1),
                 }));
@@ -788,7 +787,7 @@ public sealed class CombatTests
             TestScenarios.CombatUnit(
                 0f, 0f, FactionType.Friendly, ContactDomain.Surface, "Cruiser",
                 health: 300f, sensorRangeKm: 220f,
-                weapons: new List<WeaponMountDef>
+                weapons: new List<WeaponMount>
                 {
                     TestScenarios.Mount("sam", cooldownTicks: 5, magazine: 16),
                     TestScenarios.PointDefenseMount(rangeKm: 18f, cooldownTicks: 1, magazine: 300, pk: 0.7f),
@@ -796,14 +795,14 @@ public sealed class CombatTests
             TestScenarios.CombatUnit(
                 90f, 20f, FactionType.Hostile, ContactDomain.Air, "Raider1",
                 health: 120f, signature: 0.8f, speed: 0.6f, sensorRangeKm: 160f,
-                weapons: new List<WeaponMountDef>
+                weapons: new List<WeaponMount>
                 {
                     TestScenarios.Mount("asm", cooldownTicks: 25, magazine: 3),
                 }, vx: -0.5f, ai: AiBehavior.Aggressive),
             TestScenarios.CombatUnit(
                 100f, -30f, FactionType.Hostile, ContactDomain.Air, "Raider2",
                 health: 120f, signature: 0.7f, speed: 0.6f, sensorRangeKm: 160f,
-                weapons: new List<WeaponMountDef>
+                weapons: new List<WeaponMount>
                 {
                     TestScenarios.Mount("asm", cooldownTicks: 25, magazine: 3),
                 }, vx: -0.4f, vy: 0.2f, ai: AiBehavior.Aggressive));

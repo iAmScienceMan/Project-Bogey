@@ -1,7 +1,9 @@
+using System.Collections.Generic;
 using System.Numerics;
 using Content.Shared.Components;
 using Content.Shared.Prototypes;
 using Content.Sim;
+using Lattice.Sim.Engine;
 using NUnit.Framework;
 
 namespace Content.Tests;
@@ -84,7 +86,12 @@ public sealed class OrderingTests
     public void IssueMoveOrder_RejectsUnknownAndUnmovableUnits()
     {
         SpawnSpec stationary = new(
-            new PrototypeDefinition { Name = "Tower", Faction = FactionType.Friendly },
+            () => new List<IComponent>
+            {
+                new Identity { Name = "Tower" },
+                new Faction { Side = FactionType.Friendly },
+                new Transform(),
+            },
             Vector2.Zero,
             Vector2.Zero);
         SimRuntime sim = TestScenarios.Build(seed: 1, config: null, stationary, TestScenarios.FriendlyMover(0f, 0f, 1f));
@@ -101,11 +108,12 @@ public sealed class OrderingTests
     public void IssueMoveOrder_DoesNotCommandHostiles()
     {
         SpawnSpec hostileMover = new(
-            new PrototypeDefinition
+            () => new List<IComponent>
             {
-                Name = "Bandit",
-                Faction = FactionType.Hostile,
-                Propulsion = new PropulsionDef { MaxSpeedKmPerTick = 1f },
+                new Identity { Name = "Bandit" },
+                new Faction { Side = FactionType.Hostile },
+                new Transform(),
+                new Propulsion { MaxSpeedKmPerTick = 1f },
             },
             Vector2.Zero,
             Vector2.Zero);

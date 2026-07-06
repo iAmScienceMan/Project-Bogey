@@ -3,14 +3,12 @@ using System.Collections.Generic;
 using System.Numerics;
 using Content.Shared.Components;
 using Content.Shared.Events;
-using Content.Shared.Prototypes;
 using Content.Shared.Tracks;
-using Content.Sim.Content;
 using Lattice.Sim.Engine;
 
 namespace Content.Sim.Systems;
 
-public sealed class FireControlSystem : SystemBase
+public sealed class FireControlSystem : EntitySystem
 {
     [Dependency]
     private readonly EntityManager _entities = null!;
@@ -28,13 +26,23 @@ public sealed class FireControlSystem : SystemBase
     private readonly SimConfig _config = null!;
 
     [Dependency]
-    private readonly IReadOnlyDictionary<string, PrototypeDefinition> _prototypes = null!;
+    private readonly PrototypeManager _prototypes = null!;
 
     private readonly List<PendingOrder> _orders = new();
 
     public override void Initialize()
-        => _bus.Subscribe<EngagementOrderEvent>(order =>
+    {
+        _bus.Subscribe<EngagementOrderEvent>(order =>
             _orders.Add(new PendingOrder(order.Shooter, order.TrackId, order.Weapon, Math.Max(1, order.Count))));
+
+        SubscribeLocalEvent<Loadout, ComponentInit>((_, loadout, _) =>
+        {
+            foreach (WeaponMount mount in loadout.Mounts)
+            {
+                mount.RoundsRemaining = mount.MagazineCapacity;
+            }
+        });
+    }
 
     public override void Update()
     {
@@ -104,7 +112,7 @@ public sealed class FireControlSystem : SystemBase
         }
 
         WeaponMount? mount = FindOffensiveMount(shooter, order.Weapon);
-        if (mount is null || ProjectileDefFor(mount) is not { } projectile)
+        if (mount is null || ProjectileFor(mount) is not { } projectile)
         {
             return false;
         }
@@ -185,7 +193,7 @@ public sealed class FireControlSystem : SystemBase
                     continue;
                 }
 
-                if (ProjectileDefFor(mount) is not { } projectile)
+                if (ProjectileFor(mount) is not { } projectile)
                 {
                     continue;
                 }
@@ -222,7 +230,7 @@ public sealed class FireControlSystem : SystemBase
     private int SelectOffensiveTarget(
         FactionType side,
         Vector2 origin,
-        ProjectileDef projectile,
+        Projectile projectile,
         IReadOnlyDictionary<int, Track> picture,
         IReadOnlyDictionary<int, int> committedByTarget)
     {
@@ -322,18 +330,25 @@ public sealed class FireControlSystem : SystemBase
 
     private bool Fire(int shooter, FactionType side, Vector2 origin, int target, WeaponMount mount, Track track)
     {
-        if (!_prototypes.TryGetValue(mount.ProjectilePrototype, out PrototypeDefinition? prototype))
+        if (!_prototypes.Has(mount.ProjectilePrototype))
         {
             Log.Error($"Entity {shooter} weapon references unknown projectile prototype '{mount.ProjectilePrototype}'.");
             return false;
         }
 
-        int munitionEntity = PrototypeFactory.Spawn(_entities, prototype, new Placement(origin, Vector2.Zero));
+        int munitionEntity = _prototypes.SpawnEntity(_entities, mount.ProjectilePrototype);
+        _bus.PublishDirected(munitionEntity, new ComponentInit());
+
         if (!_entities.TryGetComponent(munitionEntity, out Projectile munition))
         {
-            Log.Error($"Projectile prototype '{mount.ProjectilePrototype}' has no projectile definition.");
+            Log.Error($"Projectile prototype '{mount.ProjectilePrototype}' has no projectile component.");
             _entities.DestroyEntity(munitionEntity);
             return false;
+        }
+
+        if (_entities.TryGetComponent(munitionEntity, out Transform transform))
+        {
+            transform.Position = origin;
         }
 
         munition.OwnerEntity = shooter;
@@ -353,9 +368,10 @@ public sealed class FireControlSystem : SystemBase
         return true;
     }
 
-    private ProjectileDef? ProjectileDefFor(WeaponMount mount)
-        => _prototypes.TryGetValue(mount.ProjectilePrototype, out PrototypeDefinition? prototype)
-            ? prototype.Projectile
+    private Projectile? ProjectileFor(WeaponMount mount)
+        => _prototypes.Has(mount.ProjectilePrototype)
+           && _prototypes.Get(mount.ProjectilePrototype).TryGetComponent(out Projectile projectile)
+            ? projectile
             : null;
 
     private int ResolveUnit(string name)

@@ -1,25 +1,31 @@
 # AIM-9+ - short-range IR air-to-air missile
-id: AIM-9PLUS
-name: AIM-9+ Sidewinder
-faction: Neutral
-signature: 0.14
-classification:
-  domain: Munition
-  typeName: AIM-9+ (IR)
-health:
-  max: 1
-propulsion:
-  maxSpeedKmPerTick: 4.5
-projectile:
-  damage: 45
-  detonationRangeKm: 1.5
-  pk: 0.9
-  rangeKm: 35
-  targetDomains: [Air]
-  motorBurnTicks: 6
-  dragPerTick: 0.06
-  seeker:
-    type: Ir
+- id: AIM-9PLUS
+  name: AIM-9+ Sidewinder
+  components:
+  - type: Identity
+    name: AIM-9+ Sidewinder
+  - type: Faction
+    side: Neutral
+  - type: Transform
+  - type: Signature
+    value: 0.14
+  - type: ClassificationProfile
+    domain: Munition
+    typeName: AIM-9+ (IR)
+  - type: Health
+    max: 1
+  - type: Propulsion
+    maxSpeedKmPerTick: 4.5
+  - type: Projectile
+    damage: 45
+    detonationRangeKm: 1.5
+    pk: 0.9
+    rangeKm: 35
+    targetDomains: [Air]
+    motorBurnTicksRemaining: 6
+    dragPerTick: 0.06
+  - type: Seeker
+    kind: Ir
     acquisitionRangeKm: 14
     fovDegrees: 40
     datalink: false

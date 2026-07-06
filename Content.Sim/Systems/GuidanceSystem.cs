@@ -8,7 +8,7 @@ using Lattice.Sim.Engine;
 
 namespace Content.Sim.Systems;
 
-public sealed class GuidanceSystem : SystemBase
+public sealed class GuidanceSystem : EntitySystem
 {
     private const float OffDomainPkFactor = 0.15f;
     private const float MaxLeadTicks = 120f;
@@ -24,6 +24,18 @@ public sealed class GuidanceSystem : SystemBase
 
     [Dependency]
     private readonly Random _rng = null!;
+
+    public override void Initialize()
+    {
+        SubscribeLocalEvent<Projectile, ComponentInit>((entity, projectile, _) =>
+        {
+            float launchSpeed = TryComp<Propulsion>(entity, out Propulsion propulsion)
+                ? propulsion.MaxSpeedKmPerTick
+                : 0f;
+            projectile.SpeedKmPerTick = launchSpeed;
+            projectile.BurnoutSpeedKmPerTick = launchSpeed * 0.25f;
+        });
+    }
 
     public override void Update()
     {
@@ -46,7 +58,7 @@ public sealed class GuidanceSystem : SystemBase
                 : SafeDirection(projectile.Datum - transform.Position);
 
             Seeker? seeker = _entities.TryGetComponent(entity, out Seeker found) ? found : null;
-            SeekerType type = seeker?.Type ?? SeekerType.Gps;
+            SeekerType type = seeker?.Kind ?? SeekerType.Gps;
 
             if (seeker is not null && type != SeekerType.Gps)
             {
@@ -142,7 +154,7 @@ public sealed class GuidanceSystem : SystemBase
 
     private static bool WithinAcquisitionBasket(Projectile projectile, Seeker seeker, Vector2 candidatePosition)
         => projectile.DatumPassed
-           || seeker.Type == SeekerType.AntiRadiation
+           || seeker.Kind == SeekerType.AntiRadiation
            || Vector2.Distance(candidatePosition, projectile.Datum) <= seeker.AcquisitionRangeKm;
 
     private bool IsLockable(int munition, Projectile projectile, Seeker seeker, int candidate)
@@ -164,14 +176,14 @@ public sealed class GuidanceSystem : SystemBase
             return false;
         }
 
-        if (seeker.Type == SeekerType.AntiRadiation)
+        if (seeker.Kind == SeekerType.AntiRadiation)
         {
             return _entities.HasComponent<Sensor>(candidate)
                 && _entities.TryGetComponent(candidate, out Faction emitter)
                 && Factions.AreHostile(projectile.ObserverFaction, emitter.Side);
         }
 
-        if (seeker.Type == SeekerType.SemiActiveRadar && !IsIlluminatedByShooter(projectile.OwnerEntity, candidate))
+        if (seeker.Kind == SeekerType.SemiActiveRadar && !IsIlluminatedByShooter(projectile.OwnerEntity, candidate))
         {
             return false;
         }

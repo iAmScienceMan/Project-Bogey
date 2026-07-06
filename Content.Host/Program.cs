@@ -7,11 +7,13 @@ using Lattice.Logging;
 using Content.Renderer.App;
 using Lattice.Shared.Changelog;
 using Lattice.Shared.Configuration;
+using Content.Shared.Components;
 using Content.Shared.Configuration;
 using Content.Shared.Prototypes;
 using Content.Sim;
 using Content.Sim.Content;
 using Content.Sim.Systems;
+using Lattice.Sim.Engine;
 
 namespace Content.Host;
 
@@ -61,13 +63,13 @@ public sealed class Program
         options.ApplyTo(cfg);
         cfg.EnablePersistence(settingsPath);
 
-        IReadOnlyDictionary<string, PrototypeDefinition> prototypes;
+        ComponentFactory componentFactory = new(new[] { typeof(Sensor).Assembly });
+        PrototypeManager prototypes = new(componentFactory);
         IReadOnlyDictionary<string, ScenarioDefinition> scenarios;
         try
         {
-            PrototypeLoader loader = new();
-            prototypes = loader.LoadPrototypes(options.PrototypesPath);
-            scenarios = loader.LoadScenarios(options.ScenariosPath);
+            prototypes.LoadDirectory(options.PrototypesPath);
+            scenarios = new ScenarioLoader().LoadScenarios(options.ScenariosPath);
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException)
         {
@@ -91,7 +93,7 @@ public sealed class Program
 
     private static int RunRealtime(
         IConfigurationManager cfg,
-        IReadOnlyDictionary<string, PrototypeDefinition> prototypes,
+        PrototypeManager prototypes,
         IReadOnlyDictionary<string, ScenarioDefinition> scenarios,
         ILogManager logManager)
     {
@@ -101,7 +103,7 @@ public sealed class Program
             Title = $"PROJECT BOGEY - tactical (seed {cfg.GetCVar(CCVars.GameSeed)})" + (debug ? " [DEBUG]" : string.Empty),
         };
 
-        List<string> prototypeIds = prototypes.Keys.ToList();
+        List<string> prototypeIds = prototypes.Prototypes.Keys.ToList();
         List<ScenarioInfo> scenarioCatalog = scenarios.Values
             .OrderBy(static s => s.Name, StringComparer.Ordinal)
             .Select(static s => new ScenarioInfo(s.Id, s.Name))

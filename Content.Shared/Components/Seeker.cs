@@ -15,7 +15,7 @@ public enum SeekerType
 [RegisterComponent]
 public sealed class Seeker : Component
 {
-    public SeekerType Type { get; set; }
+    public SeekerType Kind { get; set; }
 
     public float AcquisitionRangeKm { get; set; }
 

@@ -1,9 +1,15 @@
-id: submersible
-name: Silt-class submersible
-faction: Hostile
-signature: 0.18
-classification:
-  domain: Subsurface
-  typeName: Silt-class submersible
-health:
-  max: 120
+- id: submersible
+  name: Silt-class submersible
+  components:
+  - type: Identity
+    name: Silt-class submersible
+  - type: Faction
+    side: Hostile
+  - type: Transform
+  - type: Signature
+    value: 0.18
+  - type: ClassificationProfile
+    domain: Subsurface
+    typeName: Silt-class submersible
+  - type: Health
+    max: 120

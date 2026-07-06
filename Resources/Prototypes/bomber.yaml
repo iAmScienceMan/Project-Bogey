@@ -1,18 +1,26 @@
-id: bomber
-name: Goliath-class bomber
-faction: Hostile
-signature: 0.9
-posture: Free
-classification:
-  domain: Air
-  typeName: Goliath-class heavy bomber
-health:
-  max: 150
-sensor:
-  rangeKm: 140
-  maxDetectProbability: 0.85
-  falloffExponent: 1.5
-weapons:
-  - projectilePrototype: AGM-89
-    cooldownTicks: 30
-    magazine: 4
+- id: bomber
+  name: Goliath-class bomber
+  components:
+  - type: Identity
+    name: Goliath-class bomber
+  - type: Faction
+    side: Hostile
+  - type: Transform
+  - type: Signature
+    value: 0.9
+  - type: ClassificationProfile
+    domain: Air
+    typeName: Goliath-class heavy bomber
+  - type: Health
+    max: 150
+  - type: Sensor
+    rangeKm: 140
+    maxDetectProbability: 0.85
+    falloffExponent: 1.5
+  - type: Loadout
+    mounts:
+    - projectilePrototype: AGM-89
+      cooldownTicks: 30
+      magazineCapacity: 4
+  - type: WeaponControl
+    posture: Free

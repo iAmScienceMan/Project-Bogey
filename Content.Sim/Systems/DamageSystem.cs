@@ -4,7 +4,7 @@ using Lattice.Sim.Engine;
 
 namespace Content.Sim.Systems;
 
-public sealed class DamageSystem : SystemBase
+public sealed class DamageSystem : EntitySystem
 {
     [Dependency]
     private readonly EntityManager _entities = null!;
@@ -37,5 +37,7 @@ public sealed class DamageSystem : SystemBase
             });
             Log.Info($"Entity {entity} destroyed by entity {damage.SourceEntity}.");
         });
+
+        SubscribeLocalEvent<Health, ComponentInit>((_, health, _) => health.Current = health.Max);
     }
 }

@@ -1,37 +1,46 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Numerics;
 using Content.Shared.Components;
 using Content.Shared.Prototypes;
 using Content.Shared.Tracks;
 using Content.Sim;
 using Content.Sim.Systems;
+using Lattice.Sim.Engine;
 
 namespace Content.Tests;
 
-internal sealed record SpawnSpec(PrototypeDefinition Proto, Vector2 Position, Vector2 Velocity);
+internal sealed record SpawnSpec(Func<List<IComponent>> Build, Vector2 Position, Vector2 Velocity);
+
+internal sealed record ProtoSpec(string Id, Func<List<IComponent>> Build);
 
 internal static class TestScenarios
 {
+    private static PrototypeManager NewManager()
+        => new(new ComponentFactory(new[] { typeof(Sensor).Assembly }));
+
     public static SpawnSpec FriendlySensorAtOrigin(float rangeKm, float maxDetect, float falloff = 1.0f)
         => new(
-            new PrototypeDefinition
+            () => new List<IComponent>
             {
-                Name = "Sensor",
-                Faction = FactionType.Friendly,
-                Sensor = new SensorDef { RangeKm = rangeKm, MaxDetectProbability = maxDetect, FalloffExponent = falloff },
+                new Identity { Name = "Sensor" },
+                new Faction { Side = FactionType.Friendly },
+                new Transform(),
+                new Sensor { RangeKm = rangeKm, MaxDetectProbability = maxDetect, FalloffExponent = falloff },
             },
             Vector2.Zero,
             Vector2.Zero);
 
     public static SpawnSpec FriendlyMover(float x, float y, float maxSpeedKmPerTick, string name = "Mover")
         => new(
-            new PrototypeDefinition
+            () => new List<IComponent>
             {
-                Name = name,
-                Faction = FactionType.Friendly,
-                Propulsion = new PropulsionDef { MaxSpeedKmPerTick = maxSpeedKmPerTick },
+                new Identity { Name = name },
+                new Faction { Side = FactionType.Friendly },
+                new Transform(),
+                new Propulsion { MaxSpeedKmPerTick = maxSpeedKmPerTick },
             },
             new Vector2(x, y),
             Vector2.Zero);
@@ -39,17 +48,18 @@ internal static class TestScenarios
     public static SpawnSpec Hostile(
         float x, float y, float vx, float vy, float signature, ContactDomain domain, string typeName)
         => new(
-            new PrototypeDefinition
+            () => new List<IComponent>
             {
-                Name = typeName,
-                Faction = FactionType.Hostile,
-                Signature = signature,
-                Classification = new ClassificationDef { Domain = domain, TypeName = typeName },
+                new Identity { Name = typeName },
+                new Faction { Side = FactionType.Hostile },
+                new Transform(),
+                new Signature { Value = signature },
+                new ClassificationProfile { Domain = domain, TypeName = typeName },
             },
             new Vector2(x, y),
             new Vector2(vx, vy));
 
-    public static PrototypeDefinition MissileProto(
+    public static ProtoSpec MissileProto(
         string id,
         float damage,
         float pk,
@@ -65,49 +75,51 @@ internal static class TestScenarios
         bool datalink = true,
         bool targetsMunitions = false,
         params ContactDomain[] targetDomains)
-        => new()
-        {
-            Id = id,
-            Name = id,
-            Faction = FactionType.Neutral,
-            Signature = signature,
-            Classification = new ClassificationDef { Domain = ContactDomain.Munition, TypeName = "Missile" },
-            Health = new HealthDef { Max = 1f },
-            Propulsion = new PropulsionDef { MaxSpeedKmPerTick = speed },
-            Projectile = new ProjectileDef
+        => new(
+            id,
+            () => new List<IComponent>
             {
-                Damage = damage,
-                DetonationRangeKm = detonationRangeKm,
-                Pk = pk,
-                RangeKm = rangeKm,
-                TargetDomains = new List<ContactDomain>(targetDomains),
-                MotorBurnTicks = motorBurnTicks,
-                DragPerTick = dragPerTick,
-                Seeker = new SeekerDef
+                new Identity { Name = id },
+                new Faction { Side = FactionType.Neutral },
+                new Transform(),
+                new Signature { Value = signature },
+                new ClassificationProfile { Domain = ContactDomain.Munition, TypeName = "Missile" },
+                new Health { Max = 1f },
+                new Propulsion { MaxSpeedKmPerTick = speed },
+                new Projectile
                 {
-                    Type = seeker,
+                    Damage = damage,
+                    DetonationRangeKm = detonationRangeKm,
+                    Pk = pk,
+                    RangeKm = rangeKm,
+                    TargetDomains = new List<ContactDomain>(targetDomains),
+                    MotorBurnTicksRemaining = motorBurnTicks,
+                    DragPerTick = dragPerTick,
+                },
+                new Seeker
+                {
+                    Kind = seeker,
                     AcquisitionRangeKm = seekerRangeKm,
                     FovDegrees = fovDegrees,
                     Datalink = datalink,
                     TargetsMunitions = targetsMunitions,
                 },
-            },
-        };
+            });
 
-    public static WeaponMountDef Mount(string projectile, int cooldownTicks, int magazine)
+    public static WeaponMount Mount(string projectile, int cooldownTicks, int magazine)
         => new()
         {
             ProjectilePrototype = projectile,
             CooldownTicks = cooldownTicks,
-            Magazine = magazine,
+            MagazineCapacity = magazine,
         };
 
-    public static WeaponMountDef PointDefenseMount(float rangeKm, int cooldownTicks, int magazine, float pk)
+    public static WeaponMount PointDefenseMount(float rangeKm, int cooldownTicks, int magazine, float pk)
         => new()
         {
-            RangeKm = rangeKm,
+            PointDefenseRangeKm = rangeKm,
             CooldownTicks = cooldownTicks,
-            Magazine = magazine,
+            MagazineCapacity = magazine,
             PointDefense = true,
             PointDefensePk = pk,
         };
@@ -121,63 +133,65 @@ internal static class TestScenarios
         float signature = 0.6f,
         float sensorRangeKm = 0f,
         float speed = 0f,
-        List<WeaponMountDef>? weapons = null,
+        List<WeaponMount>? weapons = null,
         float vx = 0f, float vy = 0f,
         WeaponPosture posture = WeaponPosture.Free,
         AiBehavior? ai = null)
-    {
-        PrototypeDefinition proto = new()
-        {
-            Name = typeName,
-            Faction = side,
-            Signature = signature,
-            Classification = new ClassificationDef { Domain = domain, TypeName = typeName },
-            Health = new HealthDef { Max = health },
-            Weapons = weapons,
-            Posture = posture,
-            Ai = ai is { } behavior ? new AiDef { Behavior = behavior } : null,
-        };
+        => new(
+            () =>
+            {
+                List<IComponent> components = new()
+                {
+                    new Identity { Name = typeName },
+                    new Faction { Side = side },
+                    new Transform(),
+                    new Signature { Value = signature },
+                    new ClassificationProfile { Domain = domain, TypeName = typeName },
+                    new Health { Max = health },
+                };
 
-        if (sensorRangeKm > 0f)
-        {
-            proto.Sensor = new SensorDef { RangeKm = sensorRangeKm, MaxDetectProbability = 0.99f, FalloffExponent = 1f };
-        }
+                if (sensorRangeKm > 0f)
+                {
+                    components.Add(new Sensor
+                    {
+                        RangeKm = sensorRangeKm,
+                        MaxDetectProbability = 0.99f,
+                        FalloffExponent = 1f,
+                    });
+                }
 
-        if (speed > 0f)
-        {
-            proto.Propulsion = new PropulsionDef { MaxSpeedKmPerTick = speed };
-        }
+                if (speed > 0f)
+                {
+                    components.Add(new Propulsion { MaxSpeedKmPerTick = speed });
+                }
 
-        return new SpawnSpec(proto, new Vector2(x, y), new Vector2(vx, vy));
-    }
+                if (weapons is { Count: > 0 })
+                {
+                    components.Add(new Loadout { Mounts = weapons.Select(CloneMount).ToList() });
+                    components.Add(new WeaponControl { Posture = posture });
+                }
+
+                if (ai is { } behavior)
+                {
+                    components.Add(new Ai { Behavior = behavior });
+                }
+
+                return components;
+            },
+            new Vector2(x, y),
+            new Vector2(vx, vy));
 
     public static SimRuntime BuildCombat(
-        IEnumerable<PrototypeDefinition> library, int seed, SimConfig? config, params SpawnSpec[] specs)
+        IEnumerable<ProtoSpec> library, int seed, SimConfig? config, params SpawnSpec[] specs)
     {
-        Dictionary<string, PrototypeDefinition> prototypes = new(StringComparer.Ordinal);
-        foreach (PrototypeDefinition lib in library)
+        PrototypeManager prototypes = NewManager();
+        foreach (ProtoSpec lib in library)
         {
-            prototypes[lib.Id] = lib;
+            prototypes.Register(lib.Id, lib.Id, () => lib.Build().AsReadOnly());
         }
 
         ScenarioDefinition scenario = new() { Id = "combat" };
-
-        int index = 0;
-        foreach (SpawnSpec spec in specs)
-        {
-            string id = "u" + index.ToString(CultureInfo.InvariantCulture);
-            index++;
-
-            spec.Proto.Id = id;
-            prototypes[id] = spec.Proto;
-            scenario.Spawns.Add(new ScenarioSpawn
-            {
-                Proto = id,
-                Position = new List<float> { spec.Position.X, spec.Position.Y },
-                Velocity = new List<float> { spec.Velocity.X, spec.Velocity.Y },
-            });
-        }
-
+        AddSpawns(prototypes, scenario, specs, "u");
         return new SimRuntime(scenario, prototypes, seed, config);
     }
 
@@ -186,25 +200,9 @@ internal static class TestScenarios
 
     public static SimRuntime Build(IEnumerable<SpawnSpec> specs, int seed, SimConfig? config = null)
     {
-        Dictionary<string, PrototypeDefinition> prototypes = new(StringComparer.Ordinal);
+        PrototypeManager prototypes = NewManager();
         ScenarioDefinition scenario = new() { Id = "test" };
-
-        int index = 0;
-        foreach (SpawnSpec spec in specs)
-        {
-            string id = "e" + index.ToString(CultureInfo.InvariantCulture);
-            index++;
-
-            spec.Proto.Id = id;
-            prototypes[id] = spec.Proto;
-            scenario.Spawns.Add(new ScenarioSpawn
-            {
-                Proto = id,
-                Position = new List<float> { spec.Position.X, spec.Position.Y },
-                Velocity = new List<float> { spec.Velocity.X, spec.Velocity.Y },
-            });
-        }
-
+        AddSpawns(prototypes, scenario, specs, "e");
         return new SimRuntime(scenario, prototypes, seed, config);
     }
 
@@ -222,4 +220,34 @@ internal static class TestScenarios
 
         return history;
     }
+
+    private static void AddSpawns(
+        PrototypeManager prototypes, ScenarioDefinition scenario, IEnumerable<SpawnSpec> specs, string prefix)
+    {
+        int index = 0;
+        foreach (SpawnSpec spec in specs)
+        {
+            string id = prefix + index.ToString(CultureInfo.InvariantCulture);
+            index++;
+
+            prototypes.Register(id, id, () => spec.Build().AsReadOnly());
+            scenario.Spawns.Add(new ScenarioSpawn
+            {
+                Proto = id,
+                Position = new List<float> { spec.Position.X, spec.Position.Y },
+                Velocity = new List<float> { spec.Velocity.X, spec.Velocity.Y },
+            });
+        }
+    }
+
+    private static WeaponMount CloneMount(WeaponMount mount)
+        => new()
+        {
+            ProjectilePrototype = mount.ProjectilePrototype,
+            CooldownTicks = mount.CooldownTicks,
+            MagazineCapacity = mount.MagazineCapacity,
+            PointDefense = mount.PointDefense,
+            PointDefensePk = mount.PointDefensePk,
+            PointDefenseRangeKm = mount.PointDefenseRangeKm,
+        };
 }

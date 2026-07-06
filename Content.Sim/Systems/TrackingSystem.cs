@@ -8,7 +8,7 @@ using Lattice.Sim.Engine;
 
 namespace Content.Sim.Systems;
 
-public sealed class TrackingSystem : SystemBase
+public sealed class TrackingSystem : EntitySystem
 {
     [Dependency]
     private readonly EventBus _bus = null!;

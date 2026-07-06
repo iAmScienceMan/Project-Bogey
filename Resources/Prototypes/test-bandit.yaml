@@ -1,22 +1,30 @@
-id: test-bandit
-name: T/A-19 Kestrel
-faction: Hostile
-signature: 0.6
-posture: Free
-ai:
-  behavior: Aggressive
-classification:
-  domain: Air
-  typeName: T/A-19 strike fighter
-sensor:
-  rangeKm: 130
-  maxDetectProbability: 0.9
-  falloffExponent: 1.5
-propulsion:
-  maxSpeedKmPerTick: 0.6
-health:
-  max: 100
-weapons:
-  - projectilePrototype: AGM-89
-    cooldownTicks: 25
-    magazine: 3
+- id: test-bandit
+  name: T/A-19 Kestrel
+  components:
+  - type: Identity
+    name: T/A-19 Kestrel
+  - type: Faction
+    side: Hostile
+  - type: Transform
+  - type: Signature
+    value: 0.6
+  - type: Ai
+    behavior: Aggressive
+  - type: ClassificationProfile
+    domain: Air
+    typeName: T/A-19 strike fighter
+  - type: Sensor
+    rangeKm: 130
+    maxDetectProbability: 0.9
+    falloffExponent: 1.5
+  - type: Propulsion
+    maxSpeedKmPerTick: 0.6
+  - type: Health
+    max: 100
+  - type: Loadout
+    mounts:
+    - projectilePrototype: AGM-89
+      cooldownTicks: 25
+      magazineCapacity: 3
+  - type: WeaponControl
+    posture: Free

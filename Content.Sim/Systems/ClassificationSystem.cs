@@ -5,7 +5,7 @@ using Lattice.Sim.Engine;
 
 namespace Content.Sim.Systems;
 
-public sealed class ClassificationSystem : SystemBase
+public sealed class ClassificationSystem : EntitySystem
 {
     [Dependency]
     private readonly EntityManager _entities = null!;

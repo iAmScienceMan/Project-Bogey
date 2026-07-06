@@ -1,28 +1,36 @@
-id: test-cruiser
-name: BVS Resolute (DDG-114)
-faction: Friendly
-signature: 0.6
-posture: Defensive
-sensor:
-  rangeKm: 170
-  maxDetectProbability: 0.95
-  falloffExponent: 1.5
-propulsion:
-  maxSpeedKmPerTick: 0.5
-classification:
-  domain: Surface
-  typeName: Resolute-class destroyer
-health:
-  max: 300
-weapons:
-  - projectilePrototype: AIM-120D
-    cooldownTicks: 6
-    magazine: 16
-  - projectilePrototype: AGM-89
-    cooldownTicks: 20
-    magazine: 8
-  - pointDefense: true
-    pointDefensePk: 0.6
-    rangeKm: 9
-    cooldownTicks: 1
-    magazine: 300
+- id: test-cruiser
+  name: BVS Resolute (DDG-114)
+  components:
+  - type: Identity
+    name: BVS Resolute (DDG-114)
+  - type: Faction
+    side: Friendly
+  - type: Transform
+  - type: Signature
+    value: 0.6
+  - type: ClassificationProfile
+    domain: Surface
+    typeName: Resolute-class destroyer
+  - type: Sensor
+    rangeKm: 170
+    maxDetectProbability: 0.95
+    falloffExponent: 1.5
+  - type: Propulsion
+    maxSpeedKmPerTick: 0.5
+  - type: Health
+    max: 300
+  - type: Loadout
+    mounts:
+    - projectilePrototype: AIM-120D
+      cooldownTicks: 6
+      magazineCapacity: 16
+    - projectilePrototype: AGM-89
+      cooldownTicks: 20
+      magazineCapacity: 8
+    - pointDefense: true
+      pointDefensePk: 0.6
+      pointDefenseRangeKm: 9
+      cooldownTicks: 1
+      magazineCapacity: 300
+  - type: WeaponControl
+    posture: Defensive
