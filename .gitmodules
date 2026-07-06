@@ -1,0 +1,3 @@
+[submodule "LatticeToolbox"]
+	path = LatticeToolbox
+	url = git@github.com:iAmScienceMan/LatticeToolbox.git
