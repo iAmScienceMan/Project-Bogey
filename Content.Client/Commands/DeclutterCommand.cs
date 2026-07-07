@@ -3,14 +3,14 @@ using Lattice.Shared.Console;
 
 namespace Content.Client.Commands;
 
-public sealed class DebugOverlayCommand : ConsoleCommand
+public sealed class DeclutterCommand : ConsoleCommand
 {
     [Dependency]
     private readonly SimConsoleContext _context = null!;
 
-    public override string Command => "debugoverlay";
+    public override string Command => "declutter";
 
-    public override string Description => "Toggles the ground-truth debug overlay (admin only).";
+    public override string Description => "Cycles the ground-truth overlay display mode (admin only).";
 
     public override void Execute(IConsoleShell shell, string argStr, string[] args)
     {
@@ -25,8 +25,6 @@ public sealed class DebugOverlayCommand : ConsoleCommand
             SessionCommands.WarnIfNotAdmin(shell, session);
         }
 
-        string mode = overlay.SetVisible(!overlay.IsVisible);
-        shell.WriteLine("Ground truth: " + mode
-            + (overlay.IsVisible ? ". Right-click picks an entity, right-click again teleports it. G cycles declutter." : "."));
+        shell.WriteLine("Ground truth: " + overlay.CycleDisplay() + ".");
     }
 }

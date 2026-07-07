@@ -110,13 +110,14 @@ public static class ServerMessages
         return reader.ReadString();
     }
 
-    public static byte[] GroundTruth(IReadOnlyList<GroundTruthView> entries)
+    public static byte[] GroundTruth(GroundTruthUpdate update)
     {
         using MemoryStream stream = new();
         using BinaryWriter writer = new(stream);
         writer.Write(KindGroundTruth);
-        writer.Write(entries.Count);
-        foreach (GroundTruthView entry in entries)
+
+        writer.Write(update.Entities.Count);
+        foreach (GroundTruthView entry in update.Entities)
         {
             writer.Write(entry.EntityId);
             writer.Write(entry.Name);
@@ -131,20 +132,43 @@ public static class ServerMessages
             }
         }
 
+        writer.Write(update.Munitions.Count);
+        foreach (MunitionDebugView munition in update.Munitions)
+        {
+            writer.Write(munition.Id);
+            writer.Write((int)munition.Side);
+            writer.Write(munition.Position.X);
+            writer.Write(munition.Position.Y);
+            writer.Write(munition.HeadingRadians);
+            writer.Write((int)munition.Seeker);
+            writer.Write(munition.FovDegrees);
+            writer.Write(munition.AcquisitionRangeKm);
+            writer.Write(munition.Locked);
+            writer.Write(munition.Datum.X);
+            writer.Write(munition.Datum.Y);
+            writer.Write(munition.DatumPassed);
+            writer.Write(munition.TargetPosition.HasValue);
+            if (munition.TargetPosition is { } target)
+            {
+                writer.Write(target.X);
+                writer.Write(target.Y);
+            }
+        }
+
         writer.Flush();
         return stream.ToArray();
     }
 
-    public static IReadOnlyList<GroundTruthView> ReadGroundTruth(byte[] data)
+    public static GroundTruthUpdate ReadGroundTruth(byte[] data)
     {
         using MemoryStream stream = new(data, 1, data.Length - 1);
         using BinaryReader reader = new(stream);
 
-        int count = reader.ReadInt32();
-        List<GroundTruthView> entries = new(count);
-        for (int i = 0; i < count; i++)
+        int entityCount = reader.ReadInt32();
+        List<GroundTruthView> entities = new(entityCount);
+        for (int i = 0; i < entityCount; i++)
         {
-            entries.Add(new GroundTruthView
+            entities.Add(new GroundTruthView
             {
                 EntityId = reader.ReadInt32(),
                 Name = reader.ReadString(),
@@ -155,7 +179,29 @@ public static class ServerMessages
             });
         }
 
-        return entries;
+        int munitionCount = reader.ReadInt32();
+        List<MunitionDebugView> munitions = new(munitionCount);
+        for (int i = 0; i < munitionCount; i++)
+        {
+            munitions.Add(new MunitionDebugView
+            {
+                Id = reader.ReadInt32(),
+                Side = (FactionType)reader.ReadInt32(),
+                Position = new Vector2(reader.ReadSingle(), reader.ReadSingle()),
+                HeadingRadians = reader.ReadSingle(),
+                Seeker = (SeekerType)reader.ReadInt32(),
+                FovDegrees = reader.ReadSingle(),
+                AcquisitionRangeKm = reader.ReadSingle(),
+                Locked = reader.ReadBoolean(),
+                Datum = new Vector2(reader.ReadSingle(), reader.ReadSingle()),
+                DatumPassed = reader.ReadBoolean(),
+                TargetPosition = reader.ReadBoolean()
+                    ? new Vector2(reader.ReadSingle(), reader.ReadSingle())
+                    : null,
+            });
+        }
+
+        return new GroundTruthUpdate { Entities = entities, Munitions = munitions };
     }
 
     public static byte[] Lobby(LobbyStatus status)

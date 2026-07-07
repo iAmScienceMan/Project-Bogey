@@ -26,7 +26,7 @@ public interface IGameSession : ISimSession
 
     NetworkStats Stats { get; }
 
-    IReadOnlyList<GroundTruthView>? GroundTruth { get; }
+    GroundTruthUpdate? GroundTruth { get; }
 
     bool TryDequeueNotice([NotNullWhen(true)] out string? notice);
 

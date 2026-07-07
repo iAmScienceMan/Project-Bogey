@@ -81,6 +81,7 @@ public sealed class TacticalWindow : IDisposable, IAppControl
     private string? _pendingHost;
     private int _pendingPort;
     private bool _wasConnected;
+    private bool _truthStreaming;
 
     private Vector2 _lastMousePx;
     private Vector2 _leftDownPx;
@@ -151,6 +152,7 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         _text = new TextBatch(_gl, _font);
 
         _console = new DevConsole(Logger.LogManager, new object[] { this, _cfg, _consoleContext });
+        _consoleContext.Overlay = _groundTruth;
 
         _mainMenu = new MainMenuScreen(_cfg, _changelog);
         _mainMenu.OnConnect += (host, port) => _console.RunCommand(
@@ -243,6 +245,13 @@ public sealed class TacticalWindow : IDisposable, IAppControl
             _console.WriteLine(LogLevel.Warning, notice);
         }
 
+        bool wantsTruth = _groundTruth.WantsData && _session.Phase == GamePhase.InGame;
+        if (wantsTruth != _truthStreaming)
+        {
+            _session.SetGroundTruth(wantsTruth);
+            _truthStreaming = wantsTruth;
+        }
+
         switch (_session.Phase)
         {
             case GamePhase.Lobby when _screen == Screen.Connecting:
@@ -276,9 +285,9 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         SetLayer(RenderLayer.World);
         _map!.Draw(_session!, _camera, _prims, _sprites, _entitySprites, _text, dt, _selectedUnit, _selectedTarget, _pendingOrders, ownColor);
 
-        if (_cfg.GetCVar(CCVars.DebugOverlay) && _session!.GroundTruth is { } groundTruth)
+        if (_session!.GroundTruth is { } groundTruth)
         {
-            _groundTruth.Draw(_prims, _text, _camera, groundTruth);
+            _groundTruth.Draw(_prims, _text, _camera, viewport, groundTruth);
         }
 
         SetLayer(RenderLayer.Ui);
@@ -457,8 +466,8 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         _selectedUnit = null;
         _selectedTarget = null;
         _pendingOrders.Clear();
-        _groundTruth.Clear();
-        _cfg.SetCVar(CCVars.DebugOverlay, false);
+        _groundTruth.Reset();
+        _truthStreaming = false;
     }
 
     private void MenuEscape()
@@ -618,8 +627,7 @@ public sealed class TacticalWindow : IDisposable, IAppControl
 
         if (button == MouseButton.Right)
         {
-            if (_cfg.GetCVar(CCVars.DebugOverlay)
-                && _session?.GroundTruth is { } groundTruth
+            if (_session?.GroundTruth is { } groundTruth
                 && _hud!.HitTestOpaque(px) is null
                 && _groundTruth.PickOrPlace(px, _camera!, groundTruth) is { } request)
             {
@@ -801,6 +809,9 @@ public sealed class TacticalWindow : IDisposable, IAppControl
                 break;
             case Key.C:
                 Recenter();
+                break;
+            case Key.G:
+                _console.RunCommand("declutter");
                 break;
             case Key.Escape:
                 if (_selectedUnit is not null || _selectedTarget is not null)

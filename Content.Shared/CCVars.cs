@@ -16,9 +16,6 @@ public static class CCVars
     public static readonly CVarDef<bool> NetGraph =
         CVarDef.Create("net.graph", false, CVarFlags.None, "Draw the network statistics graph overlay.");
 
-    public static readonly CVarDef<bool> DebugOverlay =
-        CVarDef.Create("debug.overlay", false, CVarFlags.Cheat, "Draw the ground-truth debug overlay (admin only).");
-
     public static readonly CVarDef<string> GameNameVisibility =
         CVarDef.Create(
             "game.name_visibility",

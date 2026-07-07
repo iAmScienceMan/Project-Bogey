@@ -104,6 +104,59 @@ public sealed class NetProtocolTests
     }
 
     [Test]
+    public void GroundTruth_RoundTrips()
+    {
+        Content.Shared.Tracks.GroundTruthUpdate original = new()
+        {
+            Entities = new List<Content.Shared.Tracks.GroundTruthView>
+            {
+                new()
+                {
+                    EntityId = 7,
+                    Name = "Legion",
+                    Side = Content.Shared.Components.FactionType.Friendly,
+                    Domain = Content.Shared.Components.ContactDomain.Surface,
+                    Position = new System.Numerics.Vector2(1f, 2f),
+                    TypeName = "Experimental Test Platform",
+                },
+            },
+            Munitions = new List<Content.Shared.Tracks.MunitionDebugView>
+            {
+                new()
+                {
+                    Id = 42,
+                    Side = Content.Shared.Components.FactionType.Hostile,
+                    Position = new System.Numerics.Vector2(3f, 4f),
+                    HeadingRadians = 0.5f,
+                    Seeker = Content.Shared.Components.SeekerType.ActiveRadar,
+                    FovDegrees = 60f,
+                    AcquisitionRangeKm = 12f,
+                    Locked = true,
+                    Datum = new System.Numerics.Vector2(5f, 6f),
+                    DatumPassed = false,
+                    TargetPosition = new System.Numerics.Vector2(7f, 8f),
+                },
+            },
+        };
+
+        byte[] payload = ServerMessages.GroundTruth(original);
+        Assert.That(ServerMessages.Kind(payload), Is.EqualTo(ServerMessages.KindGroundTruth));
+
+        Content.Shared.Tracks.GroundTruthUpdate wire = ServerMessages.ReadGroundTruth(payload);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(wire.Entities, Has.Count.EqualTo(1));
+            Assert.That(wire.Entities[0].Name, Is.EqualTo("Legion"));
+            Assert.That(wire.Entities[0].TypeName, Is.EqualTo("Experimental Test Platform"));
+            Assert.That(wire.Munitions, Has.Count.EqualTo(1));
+            Assert.That(wire.Munitions[0].Seeker, Is.EqualTo(Content.Shared.Components.SeekerType.ActiveRadar));
+            Assert.That(wire.Munitions[0].FovDegrees, Is.EqualTo(60f));
+            Assert.That(wire.Munitions[0].TargetPosition, Is.EqualTo(new System.Numerics.Vector2(7f, 8f)));
+        });
+    }
+
+    [Test]
     public void ClientMessages_RoundTrip()
     {
         byte[] command = ClientMessages.Command(new EngageCommand

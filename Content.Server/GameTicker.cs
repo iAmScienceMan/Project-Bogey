@@ -275,7 +275,7 @@ public sealed class GameTicker
             colors[player.Username] = player.ColorRgb;
         }
 
-        List<GroundTruthView>? groundTruth = null;
+        GroundTruthUpdate? groundTruth = null;
 
         foreach (PlayerRecord player in _players.Values)
         {
@@ -295,12 +295,12 @@ public sealed class GameTicker
         }
     }
 
-    private List<GroundTruthView> CollectGroundTruth()
+    private GroundTruthUpdate CollectGroundTruth()
     {
-        List<GroundTruthView> entries = new();
+        List<GroundTruthView> entities = new();
         foreach (GroundTruthEntry entry in _sim!.DumpGroundTruth())
         {
-            entries.Add(new GroundTruthView
+            entities.Add(new GroundTruthView
             {
                 EntityId = entry.EntityId,
                 Name = entry.Name,
@@ -311,7 +311,26 @@ public sealed class GameTicker
             });
         }
 
-        return entries;
+        List<MunitionDebugView> munitions = new();
+        foreach (MunitionDebug munition in _sim.DumpMunitions())
+        {
+            munitions.Add(new MunitionDebugView
+            {
+                Id = munition.Id,
+                Side = munition.Faction,
+                Position = munition.Position,
+                HeadingRadians = munition.HeadingRadians,
+                Seeker = munition.Seeker,
+                FovDegrees = munition.FovDegrees,
+                AcquisitionRangeKm = munition.AcquisitionRangeKm,
+                Locked = munition.Locked,
+                Datum = munition.Datum,
+                DatumPassed = munition.DatumPassed,
+                TargetPosition = munition.TargetPosition,
+            });
+        }
+
+        return new GroundTruthUpdate { Entities = entities, Munitions = munitions };
     }
 
     private void BroadcastLobbyStatus()

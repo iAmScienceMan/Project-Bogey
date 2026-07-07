@@ -146,3 +146,9 @@ Entries:
       Message: The changelog is scrollable and shows newest entries first
     - Type: Fix
       Message: Fixed speed set from the server console being wiped when the round started
+- Id: 14
+  Author: iamscienceman
+  Time: '2026-07-07T19:00:00.0000000+00:00'
+  Changes:
+    - Type: Fix
+      Message: The debug overlay is back to its old self - entity names, types, IDs and true positions, seeker cones via the seekers command, munitions listing, and G-key declutter cycling

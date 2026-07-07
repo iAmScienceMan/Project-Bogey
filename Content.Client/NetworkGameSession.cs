@@ -118,7 +118,7 @@ public sealed class NetworkGameSession : IGameSession
 
     public NetworkStats Stats => _client.GetStats();
 
-    public IReadOnlyList<GroundTruthView>? GroundTruth { get; private set; }
+    public GroundTruthUpdate? GroundTruth { get; private set; }
 
     public bool TryDequeueNotice([NotNullWhen(true)] out string? notice)
         => _notices.TryDequeue(out notice);

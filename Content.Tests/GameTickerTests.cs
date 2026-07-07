@@ -267,6 +267,33 @@ public sealed class GameTickerTests
                 Is.True,
                 "admin speed change should apply");
 
+            GroundTruthUpdate? truth = null;
+            client.Send(ClientMessages.SetGroundTruth(true));
+            Assert.That(
+                SpinUntil(() =>
+                {
+                    foreach (byte[] payload in client.Poll())
+                    {
+                        switch (ServerMessages.Kind(payload))
+                        {
+                            case ServerMessages.KindLobby:
+                                lobby = ServerMessages.ReadLobby(payload);
+                                break;
+                            case ServerMessages.KindSnapshot:
+                                snapshot = ServerMessages.ReadSnapshot(payload);
+                                break;
+                            case ServerMessages.KindGroundTruth:
+                                truth = ServerMessages.ReadGroundTruth(payload);
+                                break;
+                        }
+                    }
+
+                    return truth is not null;
+                }),
+                Is.True,
+                "admin should receive ground truth after requesting it");
+            Assert.That(truth!.Entities, Has.Some.Matches<GroundTruthView>(e => e.Name == "Legion"));
+
             client.Send(ClientMessages.GoLobby());
             Assert.That(
                 SpinUntil(() =>
