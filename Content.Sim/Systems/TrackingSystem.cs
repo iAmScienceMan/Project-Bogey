@@ -16,7 +16,7 @@ public sealed class TrackingSystem : EntitySystem
     [Dependency]
     private readonly SimConfig _config = null!;
 
-    private readonly Dictionary<FactionType, Dictionary<int, Track>> _picturesByFaction = new();
+    private readonly Dictionary<string, Dictionary<int, Track>> _picturesByFaction = new(StringComparer.Ordinal);
     private int _nextTrackId;
 
     public override void Initialize()
@@ -25,11 +25,13 @@ public sealed class TrackingSystem : EntitySystem
         _bus.Subscribe<TrackDroppedEvent>(OnTrackDropped);
     }
 
-    public IReadOnlyDictionary<int, Track> EntriesFor(FactionType faction) => Picture(faction);
+    public IEnumerable<string> KnownFactions => _picturesByFaction.Keys;
 
-    public void Set(FactionType faction, int truthEntityId, Track track) => Picture(faction)[truthEntityId] = track;
+    public IReadOnlyDictionary<int, Track> EntriesFor(string faction) => Picture(faction);
 
-    public IReadOnlyList<Track> TracksFor(FactionType faction) => new List<Track>(Picture(faction).Values);
+    public void Set(string faction, int truthEntityId, Track track) => Picture(faction)[truthEntityId] = track;
+
+    public IReadOnlyList<Track> TracksFor(string faction) => new List<Track>(Picture(faction).Values);
 
     private void OnContactDetected(int truthEntityId, ContactDetectedEvent evt)
     {
@@ -71,7 +73,7 @@ public sealed class TrackingSystem : EntitySystem
 
     private void OnTrackDropped(TrackDroppedEvent evt) => Picture(evt.ObserverFaction).Remove(evt.TruthEntityId);
 
-    private Dictionary<int, Track> Picture(FactionType faction)
+    private Dictionary<int, Track> Picture(string faction)
     {
         if (!_picturesByFaction.TryGetValue(faction, out Dictionary<int, Track>? picture))
         {

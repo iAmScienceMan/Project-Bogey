@@ -13,6 +13,7 @@ public enum SeekerType
 }
 
 [RegisterComponent]
+[NetworkedComponent]
 public sealed class Seeker : Component
 {
     [DataField]

@@ -6,7 +6,7 @@
     <Label Text="CHANGELOG" FontSize="24" Color="#73D9FF" />
 
     <PanelContainer>
-      <BoxContainer Name="List" Orientation="Vertical" DrawBackground="false" Padding="16" Separation="4" />
+      <ScrollList Name="List" MaxHeight="460" Padding="16" Separation="4" />
     </PanelContainer>
 
     <Button Name="BackButton" Text="BACK" FontSize="15" MinWidth="150" Negative="true" />

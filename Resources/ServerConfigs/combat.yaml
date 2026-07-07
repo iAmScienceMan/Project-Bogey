@@ -1,0 +1,6 @@
+id: combat
+name: Combat Test
+scenario: combat-test
+seed: 42
+tickRate: 10
+port: 8712

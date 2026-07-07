@@ -2,11 +2,14 @@
 # RNG draw order, so keep entries stable if you care about replays.
 id: default
 name: Meridian Patrol
+
+playerSpawn:
+  proto: test-doom
+  name: Legion
+  position: [0, 0]
+  spacingKm: 30
+
 spawns:
-  - proto: flagship
-    position: [0, 0]
-  - proto: picket
-    position: [0, 60]
   - proto: interceptor
     position: [40, 25]
     velocity: [1.8, 1.1]

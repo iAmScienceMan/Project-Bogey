@@ -13,6 +13,7 @@ using Lattice.Renderer.Ui.Console;
 using Lattice.Renderer.Ui.Controls;
 using Content.Renderer.Ui.Screens;
 using Lattice.Shared.Changelog;
+using Content.Shared;
 using Content.Shared.Commands;
 using Lattice.Shared.Configuration;
 using Content.Shared.Configuration;
@@ -23,6 +24,7 @@ using Silk.NET.Maths;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
 using Button = Lattice.Renderer.Ui.Controls.Button;
+using HueSlider = Content.Renderer.Ui.Controls.HueSlider;
 
 namespace Content.Renderer.App;
 
@@ -38,14 +40,16 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         MainMenu,
         Options,
         Changelog,
+        Connecting,
+        Lobby,
         Tactical,
     }
 
     private readonly RendererOptions _options;
     private readonly IConfigurationManager _cfg;
     private readonly IChangelogManager _changelog;
-    private readonly SimBootFactory _sessionFactory;
-    private readonly IReadOnlyList<ScenarioInfo> _scenarios;
+    private readonly GameSessionFactory _sessionFactory;
+    private readonly IReadOnlyList<string> _prototypeIds;
     private readonly SimConsoleContext _consoleContext = new();
     private readonly Dictionary<string, Vector2> _pendingOrders = new(StringComparer.Ordinal);
 
@@ -61,14 +65,22 @@ public sealed class TacticalWindow : IDisposable, IAppControl
     private MainMenuScreen _mainMenu = null!;
     private OptionsScreen _optionsScreen = null!;
     private ChangelogScreen _changelogScreen = null!;
+    private ConnectingScreen _connectingScreen = null!;
+    private LobbyScreen _lobbyScreen = null!;
 
-    private ISimSession? _session;
-    private IDebugOverlay? _debugOverlay;
+    private IGameSession? _session;
     private TacticalMapRenderer? _map;
     private Camera2D? _camera;
     private TacticalHud? _hud;
 
+    private readonly NetGraph _netGraph = new();
+    private readonly GroundTruthOverlayView _groundTruth = new();
+
     private Screen _screen = Screen.MainMenu;
+    private Screen _optionsReturn = Screen.MainMenu;
+    private string? _pendingHost;
+    private int _pendingPort;
+    private bool _wasConnected;
 
     private Vector2 _lastMousePx;
     private Vector2 _leftDownPx;
@@ -78,6 +90,7 @@ public sealed class TacticalWindow : IDisposable, IAppControl
     private Button? _pressedButton;
     private Button? _hoveredButton;
     private LineEdit? _focused;
+    private HueSlider? _draggedSlider;
     private string? _selectedUnit;
     private int? _selectedTarget;
 
@@ -85,14 +98,14 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         RendererOptions options,
         IConfigurationManager cfg,
         IChangelogManager changelog,
-        SimBootFactory sessionFactory,
-        IReadOnlyList<ScenarioInfo> scenarios)
+        GameSessionFactory sessionFactory,
+        IReadOnlyList<string> prototypeIds)
     {
         _options = options;
         _cfg = cfg;
         _changelog = changelog;
         _sessionFactory = sessionFactory;
-        _scenarios = scenarios;
+        _prototypeIds = prototypeIds;
     }
 
     public void Run()
@@ -139,17 +152,29 @@ public sealed class TacticalWindow : IDisposable, IAppControl
 
         _console = new DevConsole(Logger.LogManager, new object[] { this, _cfg, _consoleContext });
 
-        _mainMenu = new MainMenuScreen(_cfg, _changelog, _scenarios);
-        _mainMenu.OnDeploy += Deploy;
+        _mainMenu = new MainMenuScreen(_cfg, _changelog);
+        _mainMenu.OnConnect += (host, port) => _console.RunCommand(
+            string.Create(CultureInfo.InvariantCulture, $"connect {host}:{port}"));
         _mainMenu.OnChangelog += ShowChangelog;
-        _mainMenu.OnOptions += ShowOptions;
+        _mainMenu.OnOptions += () => ShowOptions(Screen.MainMenu);
         _mainMenu.OnQuit += () => _window?.Close();
 
         _optionsScreen = new OptionsScreen(_cfg);
-        _optionsScreen.OnBack += ShowMainMenu;
+        _optionsScreen.OnBack += CloseOptions;
 
         _changelogScreen = new ChangelogScreen();
         _changelogScreen.OnBack += ShowMainMenu;
+
+        _connectingScreen = new ConnectingScreen();
+        _connectingScreen.OnCancel += LeaveServer;
+        _connectingScreen.OnRetry += RetryConnect;
+
+        _lobbyScreen = new LobbyScreen();
+        _lobbyScreen.OnReadyToggle += ready => _session?.SetReady(ready);
+        _lobbyScreen.OnJoin += () => _session?.JoinGame();
+        _lobbyScreen.OnLeave += () => _console.RunCommand("disconnect");
+        _lobbyScreen.OnOptions += () => ShowOptions(Screen.Lobby);
+        _lobbyScreen.OnApplyColor += ApplyColor;
 
         _cfg.OnValueChanged(CVars.RenderVsync, ApplyVsync);
         _cfg.OnValueChanged(CVars.RenderWidth, ApplyWidth);
@@ -166,6 +191,7 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         foreach (IKeyboard keyboard in _input.Keyboards)
         {
             keyboard.KeyDown += OnKeyDown;
+            keyboard.KeyUp += OnKeyUp;
             keyboard.KeyChar += OnKeyChar;
         }
     }
@@ -177,6 +203,8 @@ public sealed class TacticalWindow : IDisposable, IAppControl
 
         _gl.Clear((uint)ClearBufferMask.ColorBufferBit);
 
+        AdvanceSession((float)deltaSeconds);
+
         if (_screen == Screen.Tactical)
         {
             RenderTactical(viewport, (float)deltaSeconds);
@@ -184,6 +212,13 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         else
         {
             RenderMenu(viewport, (float)deltaSeconds);
+        }
+
+        if (_session is not null && _cfg.GetCVar(CCVars.NetGraph))
+        {
+            SetLayer(RenderLayer.Ui);
+            _netGraph.Update(_session.Stats, (float)deltaSeconds);
+            _netGraph.Draw(_prims, _text, viewport, _session.Stats);
         }
 
         SetLayer(RenderLayer.Overlay);
@@ -194,15 +229,57 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         FlushLayered(viewport);
     }
 
+    private void AdvanceSession(float dt)
+    {
+        if (_session is null)
+        {
+            return;
+        }
+
+        _session.Advance(dt);
+
+        while (_session.TryDequeueNotice(out string? notice))
+        {
+            _console.WriteLine(LogLevel.Warning, notice);
+        }
+
+        switch (_session.Phase)
+        {
+            case GamePhase.Lobby when _screen == Screen.Connecting:
+                EnterLobby();
+                break;
+            case GamePhase.Lobby when _screen == Screen.Tactical:
+                TearDownTactical();
+                EnterLobby();
+                break;
+            case GamePhase.InGame when _screen is Screen.Connecting or Screen.Lobby:
+                EnterTactical();
+                break;
+            case GamePhase.Disconnected when _screen != Screen.Connecting:
+                ShowDisconnected();
+                break;
+            case GamePhase.Disconnected when _screen == Screen.Connecting:
+                _connectingScreen.ShowFailure(_session.DisconnectReason, _wasConnected);
+                break;
+        }
+    }
+
     private void RenderTactical(Vector2 viewport, float dt)
     {
-        _session!.Advance(dt);
         PruneArrivedOrders();
         _camera!.ResizeViewport(viewport);
 
+        uint ownColor = ColorRgbUtil.ParseHex(
+            _cfg.GetCVar(CCVars.PlayerColor),
+            ColorRgbUtil.ParseHex(CCVars.PlayerColor.DefaultValue, 0x4DC3FF));
+
         SetLayer(RenderLayer.World);
-        _map!.Draw(_session, _camera, _prims, _sprites, _entitySprites, _text, dt, _selectedUnit, _selectedTarget, _pendingOrders);
-        _debugOverlay?.Draw(_prims, _text, _camera, viewport);
+        _map!.Draw(_session!, _camera, _prims, _sprites, _entitySprites, _text, dt, _selectedUnit, _selectedTarget, _pendingOrders, ownColor);
+
+        if (_cfg.GetCVar(CCVars.DebugOverlay) && _session!.GroundTruth is { } groundTruth)
+        {
+            _groundTruth.Draw(_prims, _text, _camera, groundTruth);
+        }
 
         SetLayer(RenderLayer.Ui);
         _hud!.SelectedUnit = _selectedUnit;
@@ -215,12 +292,12 @@ public sealed class TacticalWindow : IDisposable, IAppControl
 
     private void RenderMenu(Vector2 viewport, float dt)
     {
-        Control screen = _screen switch
+        if (_screen == Screen.Lobby)
         {
-            Screen.Options => _optionsScreen,
-            Screen.Changelog => _changelogScreen,
-            _ => _mainMenu,
-        };
+            _lobbyScreen.Update(_session?.Lobby, _session?.Username ?? string.Empty);
+        }
+
+        Control screen = ActiveRoot;
 
         SetLayer(RenderLayer.Ui);
         screen.FrameUpdate(dt);
@@ -232,6 +309,8 @@ public sealed class TacticalWindow : IDisposable, IAppControl
     {
         Screen.Options => _optionsScreen,
         Screen.Changelog => _changelogScreen,
+        Screen.Connecting => _connectingScreen,
+        Screen.Lobby => _lobbyScreen,
         Screen.MainMenu => _mainMenu,
         _ => _hud!,
     };
@@ -257,41 +336,93 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         }
     }
 
-    private void Deploy()
+    public void ConnectTo(string host, int port)
     {
-        if (_screen == Screen.Tactical)
-        {
-            return;
-        }
+        _pendingHost = host;
+        _pendingPort = port;
+        CreateSession();
+    }
 
-        SimBoot boot = _sessionFactory(_cfg);
-        _session = boot.Session;
-        _debugOverlay = boot.Overlay;
+    public void DisconnectFromServer() => LeaveServer();
+
+    public bool HasSession => _session is not null;
+
+    private void RetryConnect()
+    {
+        if (_pendingHost is not null)
+        {
+            CreateSession();
+        }
+        else
+        {
+            ShowMainMenu();
+        }
+    }
+
+    private void CreateSession()
+    {
+        _session?.Disconnect();
+        TearDownTactical();
+
+        _session = _sessionFactory(_pendingHost!, _pendingPort);
         _consoleContext.Session = _session;
-        _consoleContext.Overlay = _debugOverlay;
-        _consoleContext.Prototypes = boot.Prototypes;
+        _consoleContext.Prototypes = _prototypeIds;
+        _wasConnected = false;
+
+        _connectingScreen.ShowConnecting($"{_pendingHost}:{_pendingPort}");
+        ClearInteraction();
+        _screen = Screen.Connecting;
+    }
+
+    private void EnterLobby()
+    {
+        _wasConnected = true;
+        _lobbyScreen.ColorHue = ColorRgbUtil.ToHue(
+            ColorRgbUtil.ParseHex(_cfg.GetCVar(CCVars.PlayerColor), 0x4DC3FF));
+        ClearInteraction();
+        _screen = Screen.Lobby;
+    }
+
+    private void EnterTactical()
+    {
         _map = new TacticalMapRenderer();
         _camera = new Camera2D(LogicalSize(), Vector2.Zero, _cfg.GetCVar(CVars.RenderZoom));
-        _hud = new TacticalHud(_session, _debugOverlay, Recenter, _console.RunCommand);
+        _hud = new TacticalHud(_session!, Recenter, _console.RunCommand);
 
-        int speed = _cfg.GetCVar(CCVars.GameStartPaused)
-            ? 0
-            : _cfg.GetCVar(CCVars.GameDefaultSpeed);
-        _session.SetSpeed(speed);
-        Recenter();
-
-        ClearInteraction();
         _selectedUnit = null;
         _selectedTarget = null;
         _pendingOrders.Clear();
+        ClearInteraction();
         _screen = Screen.Tactical;
+        Recenter();
     }
 
-    private void ShowOptions()
+    private void ApplyColor(uint rgb)
     {
+        _cfg.SetCVar(CCVars.PlayerColor, ColorRgbUtil.ToHex(rgb));
+        _session?.SetColor(rgb);
+    }
+
+    private void ShowDisconnected()
+    {
+        TearDownTactical();
+        _connectingScreen.ShowFailure(_session?.DisconnectReason, _wasConnected);
+        ClearInteraction();
+        _screen = Screen.Connecting;
+    }
+
+    private void ShowOptions(Screen returnTo)
+    {
+        _optionsReturn = returnTo;
         _optionsScreen.Refresh();
         ClearInteraction();
         _screen = Screen.Options;
+    }
+
+    private void CloseOptions()
+    {
+        ClearInteraction();
+        _screen = _optionsReturn;
     }
 
     private void ShowChangelog()
@@ -309,38 +440,45 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         _screen = Screen.MainMenu;
     }
 
-    private void StopSimulation()
+    private void LeaveServer()
     {
-        if (_screen != Screen.Tactical)
-        {
-            return;
-        }
-
+        _session?.Disconnect();
         _session = null;
-        _debugOverlay = null;
+        _consoleContext.Session = null;
+        TearDownTactical();
+        ShowMainMenu();
+    }
+
+    private void TearDownTactical()
+    {
         _map = null;
         _camera = null;
         _hud = null;
-        _consoleContext.Session = null;
-        _consoleContext.Overlay = null;
-        _consoleContext.Prototypes = Array.Empty<string>();
-
         _selectedUnit = null;
         _selectedTarget = null;
         _pendingOrders.Clear();
-        ClearInteraction();
-        _screen = Screen.MainMenu;
+        _groundTruth.Clear();
+        _cfg.SetCVar(CCVars.DebugOverlay, false);
     }
 
     private void MenuEscape()
     {
-        if (_screen is Screen.Options or Screen.Changelog)
+        switch (_screen)
         {
-            ShowMainMenu();
-        }
-        else
-        {
-            _window?.Close();
+            case Screen.Options:
+                CloseOptions();
+                break;
+            case Screen.Changelog:
+                ShowMainMenu();
+                break;
+            case Screen.Connecting:
+                LeaveServer();
+                break;
+            case Screen.Lobby:
+                break;
+            default:
+                _window?.Close();
+                break;
         }
     }
 
@@ -348,6 +486,7 @@ public sealed class TacticalWindow : IDisposable, IAppControl
     {
         _focused?.Blur();
         _focused = null;
+        _draggedSlider = null;
 
         if (_hoveredButton is not null)
         {
@@ -445,6 +584,12 @@ public sealed class TacticalWindow : IDisposable, IAppControl
             _focused?.Focus();
         }
 
+        if (hit is HueSlider slider)
+        {
+            _draggedSlider = slider;
+            slider.SetFromPosition(px);
+        }
+
         if (hit is Button button)
         {
             _pressedButton = button;
@@ -473,13 +618,13 @@ public sealed class TacticalWindow : IDisposable, IAppControl
 
         if (button == MouseButton.Right)
         {
-            if (_hud!.HitTestOpaque(px) is null && _debugOverlay is not null)
+            if (_cfg.GetCVar(CCVars.DebugOverlay)
+                && _session?.GroundTruth is { } groundTruth
+                && _hud!.HitTestOpaque(px) is null
+                && _groundTruth.PickOrPlace(px, _camera!, groundTruth) is { } request)
             {
-                if (_debugOverlay.PickOrPlace(px, _camera!) is { } request)
-                {
-                    _console.RunCommand(string.Create(CultureInfo.InvariantCulture,
-                        $"teleport {request.EntityId} {request.Position.X} {request.Position.Y}"));
-                }
+                _console.RunCommand(string.Create(CultureInfo.InvariantCulture,
+                    $"teleport {request.EntityId} {request.World.X:0.##} {request.World.Y:0.##}"));
             }
 
             return;
@@ -516,6 +661,8 @@ public sealed class TacticalWindow : IDisposable, IAppControl
 
     private void MenuMouseUp(Vector2 px)
     {
+        _draggedSlider = null;
+
         if (_pressedButton is not null)
         {
             _pressedButton.IsPressed = false;
@@ -534,6 +681,11 @@ public sealed class TacticalWindow : IDisposable, IAppControl
     {
         Vector2 px = ToLogical(position);
         UpdateHover(px);
+
+        if (_draggedSlider is not null)
+        {
+            _draggedSlider.SetFromPosition(px);
+        }
 
         if (_screen == Screen.Tactical && _leftDown)
         {
@@ -561,6 +713,12 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         if (_console.IsOpen)
         {
             _console.HandleScroll(wheel.Y);
+            return;
+        }
+
+        if (_screen == Screen.Changelog)
+        {
+            _changelogScreen.HandleScroll(wheel.Y);
             return;
         }
 
@@ -644,13 +802,6 @@ public sealed class TacticalWindow : IDisposable, IAppControl
             case Key.C:
                 Recenter();
                 break;
-            case Key.G:
-                if (_debugOverlay is not null)
-                {
-                    _console.RunCommand("declutter");
-                }
-
-                break;
             case Key.Escape:
                 if (_selectedUnit is not null || _selectedTarget is not null)
                 {
@@ -659,8 +810,16 @@ public sealed class TacticalWindow : IDisposable, IAppControl
                     break;
                 }
 
-                StopSimulation();
+                _console.RunCommand("disconnect");
                 break;
+        }
+    }
+
+    private void OnKeyUp(IKeyboard keyboard, Key key, int scancode)
+    {
+        if (_console.IsOpen)
+        {
+            _console.HandleKeyUp(key);
         }
     }
 
@@ -797,6 +956,7 @@ public sealed class TacticalWindow : IDisposable, IAppControl
 
     private void OnClosing()
     {
+        _session?.Disconnect();
         _prims.Dispose();
         _sprites.Dispose();
         _entitySprites.Dispose();

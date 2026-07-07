@@ -1,0 +1,42 @@
+<!-- ReSharper disable All -->
+<Control xmlns="clr-namespace:Lattice.Renderer.Ui.Controls;assembly=Lattice.Renderer">
+
+  <BoxContainer Anchor="TopLeft" Margin="24 24 0 0" Orientation="Horizontal" Separation="12" Padding="10">
+    <Label Name="StartTimeLabel" Text="Round starts in: --" FontSize="15" Color="#CCDBEB" />
+    <Button Name="ReadyButton" Text="READY UP" FontSize="15" MinWidth="170" />
+  </BoxContainer>
+
+  <!--
+  DISABLED UNTIL THE FEATURE IS IMPLEMENTED
+
+  <BoxContainer Anchor="BottomLeft" Margin="24 0 0 20" Orientation="Vertical" Separation="4" Padding="8">
+    <Label Name="LobbySongLabel" Text="No lobby music playing." FontSize="11" Color="#9EAECC" />
+  </BoxContainer>
+  -->
+
+  <PanelContainer Anchor="TopRight" Margin="0 24 24 0">
+    <BoxContainer Orientation="Vertical" DrawBackground="false" Separation="10" Padding="18">
+
+      <Label Name="ServerNameLabel" Text="SERVER" FontSize="24" Color="#EAD46B" />
+      <Label Text="_______________________________" FontSize="10" Color="#EAD46B" />
+
+      <BoxContainer Orientation="Horizontal" DrawBackground="false" Separation="8">
+        <Button Name="OptionsButton" Text="OPTIONS" FontSize="13" MinWidth="130" />
+        <Button Name="LeaveButton" Text="LEAVE" FontSize="13" MinWidth="130" Negative="true" />
+      </BoxContainer>
+
+      <Label Text="SERVER INFO" FontSize="15" Color="#73D9FF" />
+      <Label Name="ScenarioLabel" Text="Scenario: -" FontSize="13" Color="#CCDBEB" />
+      <Label Name="RoundStateLabel" Text="Round: not started" FontSize="13" Color="#CCDBEB" />
+
+      <Label Text="PLAYERS" FontSize="15" Color="#73D9FF" />
+      <BoxContainer Name="PlayerList" Orientation="Vertical" DrawBackground="false" Separation="4" />
+
+      <Label Text="UNIT COLOR" FontSize="15" Color="#73D9FF" />
+      <BoxContainer Name="ColorRow" Orientation="Vertical" DrawBackground="false" Separation="8" />
+      <Button Name="ApplyColorButton" Text="APPLY" FontSize="13" MinWidth="130" />
+
+    </BoxContainer>
+  </PanelContainer>
+
+</Control>

@@ -16,26 +16,20 @@ public sealed partial class TacticalHud : Control
 {
     private readonly ISimSession _session;
     private readonly Action<string> _runCommand;
-    private readonly bool _debug;
 
     private const int MaxSalvoSize = 8;
 
     private string _weaponKey = string.Empty;
     private int _salvoSize = 1;
 
-    public TacticalHud(ISimSession session, IDebugOverlay? debugOverlay, Action recenter, Action<string> runCommand)
+    public TacticalHud(ISimSession session, Action recenter, Action<string> runCommand)
     {
         _session = session;
         _runCommand = runCommand;
-        _debug = debugOverlay is not null;
 
         LatticeXaml.Load(this);
 
-        PauseButton.OnPressed += TogglePause;
-        NormalButton.OnPressed += () => _runCommand("speed 1");
-        FastButton.OnPressed += () => _runCommand("speed 10");
         RecenterButton.OnPressed += () => recenter();
-        DeclutterButton.OnPressed += () => _runCommand("declutter");
 
         PostureHoldButton.OnPressed += () => SetPosture("hold");
         PostureDefButton.OnPressed += () => SetPosture("defensive");
@@ -46,7 +40,6 @@ public sealed partial class TacticalHud : Control
         SalvoDownButton.OnPressed += () => AdjustSalvo(-1);
         SalvoUpButton.OnPressed += () => AdjustSalvo(1);
 
-        DebugPanel.Visible = _debug;
         EngagePanel.Visible = false;
     }
 
@@ -70,11 +63,6 @@ public sealed partial class TacticalHud : Control
 
         TickLabel.Text = "TICK " + _session.Tick.ToString(CultureInfo.InvariantCulture);
         SpeedLabel.Text = "SPEED " + SpeedLabelText(_session.Speed);
-
-        PauseButton.Active = _session.Speed == 0;
-        NormalButton.Active = _session.Speed == 1;
-        FastButton.Active = _session.Speed == 10;
-        DebugPanel.Visible = _debug;
 
         UpdateEngagePanel();
     }
@@ -245,9 +233,6 @@ public sealed partial class TacticalHud : Control
 
         return builder.ToString();
     }
-
-    private void TogglePause()
-        => _runCommand(_session.Speed == 0 ? "speed 1" : "speed 0");
 
     private static string SpeedLabelText(int speed) => speed switch
     {

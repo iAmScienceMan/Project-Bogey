@@ -1,16 +1,16 @@
+using System;
 using Content.Shared.Components;
 
 namespace Content.Sim.Systems;
 
 public static class Factions
 {
-    public static readonly FactionType[] InOrder =
-    {
-        FactionType.Friendly,
-        FactionType.Hostile,
-        FactionType.Neutral,
-    };
+    public static bool AreHostile(Faction a, Faction b)
+        => a.Side != FactionType.Neutral
+           && b.Side != FactionType.Neutral
+           && !string.Equals(a.EffectiveId, b.EffectiveId, StringComparison.Ordinal);
 
-    public static bool AreHostile(FactionType a, FactionType b)
-        => a != FactionType.Neutral && b != FactionType.Neutral && a != b;
+    public static bool IsHostileTo(string observerFactionId, Faction other)
+        => other.Side != FactionType.Neutral
+           && !string.Equals(other.EffectiveId, observerFactionId, StringComparison.Ordinal);
 }

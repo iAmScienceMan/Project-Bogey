@@ -1,0 +1,24 @@
+# AGM-88+ - anti-radiation missile
+- id: AGM-88PLUS
+  name: AGM-88+ HARM
+  parent: BaseMissile
+  components:
+  - type: Signature
+    value: 0.2
+  - type: ClassificationProfile
+    typeName: AGM-88+ (anti-radiation)
+  - type: Propulsion
+    maxSpeedKmPerTick: 4.8
+  - type: Projectile
+    damage: 60
+    detonationRangeKm: 2.0
+    pk: 0.9
+    rangeKm: 110
+    targetDomains: [Surface]
+    motorBurnTicksRemaining: 14
+    dragPerTick: 0.03
+  - type: Seeker
+    kind: AntiRadiation
+    acquisitionRangeKm: 30
+    fovDegrees: 70
+    datalink: false

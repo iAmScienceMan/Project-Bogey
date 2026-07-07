@@ -8,6 +8,7 @@
     <ProjectReference Include="..\LatticeToolbox\Lattice.Renderer\Lattice.Renderer.csproj" />
     <ProjectReference Include="..\LatticeToolbox\Lattice.Shared\Lattice.Shared.csproj" />
     <ProjectReference Include="..\LatticeToolbox\Lattice.Logging\Lattice.Logging.csproj" />
+    <ProjectReference Include="..\LatticeToolbox\Lattice.Network\Lattice.Network.csproj" />
     <ProjectReference Include="..\Content.Shared\Content.Shared.csproj" />
   </ItemGroup>
 

@@ -1,0 +1,26 @@
+# forward picket, shorter sensor
+- id: picket
+  name: BVS Lyre (picket)
+  parent: BaseFriendlyShip
+  components:
+  - type: Signature
+    value: 0.5
+  - type: ClassificationProfile
+    typeName: Lyre-class corvette
+  - type: Sensor
+    rangeKm: 100
+    maxDetectProbability: 0.90
+  - type: Propulsion
+    maxSpeedKmPerTick: 0.7
+  - type: Health
+    max: 200
+  - type: Loadout
+    mounts:
+    - projectilePrototype: AIRS-T
+      cooldownTicks: 3
+      magazineCapacity: 16
+    - pointDefense: true
+      pointDefensePk: 0.5
+      pointDefenseRangeKm: 8
+      cooldownTicks: 1
+      magazineCapacity: 200

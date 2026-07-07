@@ -12,8 +12,21 @@ public enum FactionType
 
 
 [RegisterComponent]
+[NetworkedComponent]
 public sealed class Faction : Component
 {
     [DataField]
     public FactionType Side { get; set; }
+
+    [DataField]
+    public string? Id { get; set; }
+
+    public string EffectiveId => Id ?? DefaultIdFor(Side);
+
+    public static string DefaultIdFor(FactionType side) => side switch
+    {
+        FactionType.Friendly => "friendly",
+        FactionType.Hostile => "hostile",
+        _ => "neutral",
+    };
 }

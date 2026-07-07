@@ -181,9 +181,9 @@ public sealed class ConfigurationManagerTests
         Assert.Multiple(() =>
         {
             Assert.That(cfg.IsRegistered("ui.scale"), Is.True);
-            Assert.That(cfg.IsRegistered("game.seed"), Is.True);
+            Assert.That(cfg.IsRegistered("player.username"), Is.True);
             Assert.That(cfg.GetCVar(CVars.UiScale), Is.EqualTo(1f));
-            Assert.That(cfg.GetCVar(CCVars.GameSeed), Is.EqualTo(1337));
+            Assert.That(cfg.GetCVar(CCVars.PlayerUsername), Is.EqualTo("Bogeyman"));
         });
     }
 }

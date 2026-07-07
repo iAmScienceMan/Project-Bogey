@@ -22,7 +22,7 @@ public sealed class TrackDecaySystem : EntitySystem
 
     public override void Update()
     {
-        foreach (FactionType faction in Factions.InOrder)
+        foreach (string faction in new List<string>(_tracking.KnownFactions))
         {
             List<KeyValuePair<int, Track>> entries = new(_tracking.EntriesFor(faction));
 

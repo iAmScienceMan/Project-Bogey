@@ -3,7 +3,8 @@
     <Project Path="Content.Shared/Content.Shared.csproj" />
     <Project Path="Content.Sim/Content.Sim.csproj" />
     <Project Path="Content.Renderer/Content.Renderer.csproj" />
-    <Project Path="Content.Host/Content.Host.csproj" />
+    <Project Path="Content.Server/Content.Server.csproj" />
+    <Project Path="Content.Client/Content.Client.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="Content.Tests/Content.Tests.csproj" />
@@ -13,6 +14,7 @@
     <Project Path="LatticeToolbox/Lattice.Renderer.Xaml.Generator/Lattice.Renderer.Xaml.Generator.csproj" />
     <Project Path="LatticeToolbox/Lattice.Shared/Lattice.Shared.csproj" />
     <Project Path="LatticeToolbox/Lattice.Sim/Lattice.Sim.csproj" />
+    <Project Path="LatticeToolbox/Lattice.Network/Lattice.Network.csproj" />
     <Project Path="LatticeToolbox/Lattice.Renderer/Lattice.Renderer.csproj" />
   </Folder>
 </Solution>

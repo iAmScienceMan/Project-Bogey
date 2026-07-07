@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using Lattice.Renderer.Ui;
 using Lattice.Renderer.Gl;
@@ -27,9 +28,12 @@ public sealed partial class ChangelogScreen : Control
 
     public event Action? OnBack;
 
+    public void HandleScroll(float wheelY) => List.HandleScroll(wheelY);
+
     public void Populate(IChangelogManager changelog)
     {
         List.ClearChildren();
+        List.ScrollToTop();
 
         if (changelog.Entries.Count == 0)
         {
@@ -40,28 +44,32 @@ public sealed partial class ChangelogScreen : Control
         int lastRead = changelog.LastReadId;
         DateTime? currentDate = null;
         string? currentAuthor = null;
-        bool sawUnread = false;
+        bool previousUnread = false;
         bool dividerPlaced = false;
 
-        foreach (ChangelogEntry entry in changelog.Entries)
+        List<ChangelogEntry> entries = new(changelog.Entries);
+        entries.Sort(static (a, b) => b.Id.CompareTo(a.Id));
+
+        foreach (ChangelogEntry entry in entries)
         {
+            bool unread = entry.Id > lastRead;
+
+            if (previousUnread && !unread && !dividerPlaced)
+            {
+                dividerPlaced = true;
+                currentDate = null;
+                currentAuthor = null;
+                List.AddChild(Text("-- everything above is new since your last visit --", 12f, UiTheme.Accent));
+            }
+
+            previousUnread = unread;
+
             DateTime date = entry.Time.ToLocalTime().Date;
             if (currentDate != date)
             {
                 currentDate = date;
                 currentAuthor = null;
                 List.AddChild(Text(FormatDate(date), 14f, UiTheme.Accent));
-            }
-
-            if (entry.Id > lastRead)
-            {
-                sawUnread = true;
-            }
-            else if (sawUnread && !dividerPlaced)
-            {
-                dividerPlaced = true;
-                currentAuthor = null;
-                List.AddChild(Text("-- new since your last visit --", 12f, UiTheme.Accent));
             }
 
             if (currentAuthor != entry.Author)

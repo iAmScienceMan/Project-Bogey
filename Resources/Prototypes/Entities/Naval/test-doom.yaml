@@ -1,0 +1,42 @@
+- id: test-doom
+  name: BVS "Doom Machine"
+  parent: BaseFriendlyShip
+  components:
+  - type: Signature
+    value: 0.3
+  - type: ClassificationProfile
+    typeName: Experimental Test Platform
+  - type: Sensor
+    rangeKm: 170
+  - type: Propulsion
+    maxSpeedKmPerTick: 10.0
+  - type: Health
+    max: 1000000
+  - type: Loadout
+    mounts:
+    - projectilePrototype: AIM-120D
+      cooldownTicks: 1
+      magazineCapacity: 100000
+    - projectilePrototype: AIM-9PLUS
+      cooldownTicks: 1
+      magazineCapacity: 100000
+    - projectilePrototype: AIRS-T
+      cooldownTicks: 1
+      magazineCapacity: 100000
+    - projectilePrototype: AGM-88PLUS
+      cooldownTicks: 1
+      magazineCapacity: 50000
+    - projectilePrototype: AGM-89
+      cooldownTicks: 1
+      magazineCapacity: 50000
+    - projectilePrototype: AGM-161
+      cooldownTicks: 1
+      magazineCapacity: 50000
+    - projectilePrototype: AGM-65
+      cooldownTicks: 1
+      magazineCapacity: 50000
+    - pointDefense: true
+      pointDefensePk: 0.6
+      pointDefenseRangeKm: 9
+      cooldownTicks: 1
+      magazineCapacity: 1000000

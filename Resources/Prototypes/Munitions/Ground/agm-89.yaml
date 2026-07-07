@@ -1,0 +1,24 @@
+# AGM-89 - long-range anti-ship cruise missile
+- id: AGM-89
+  name: AGM-89 Harpoon
+  parent: BaseMissile
+  components:
+  - type: Signature
+    value: 0.35
+  - type: ClassificationProfile
+    typeName: AGM-89 (anti-ship)
+  - type: Propulsion
+    maxSpeedKmPerTick: 3.2
+  - type: Projectile
+    damage: 130
+    detonationRangeKm: 2.0
+    pk: 0.9
+    rangeKm: 180
+    targetDomains: [Surface]
+    motorBurnTicksRemaining: 55
+    dragPerTick: 0.04
+  - type: Seeker
+    kind: ActiveRadar
+    acquisitionRangeKm: 20
+    fovDegrees: 50
+    datalink: true

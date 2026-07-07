@@ -14,8 +14,16 @@ public sealed class AiSystem : EntitySystem
     [Dependency]
     private readonly TrackingSystem _tracking = null!;
 
+    [Dependency]
+    private readonly SimConfig _config = null!;
+
     public override void Update()
     {
+        if (!_config.AiEnabled)
+        {
+            return;
+        }
+
         foreach (int entity in _entities.Query<Ai, Transform>())
         {
             if (_entities.GetComponent<Ai>(entity).Behavior != AiBehavior.Aggressive)
@@ -28,25 +36,25 @@ public sealed class AiSystem : EntitySystem
                 continue;
             }
 
-            FactionType side = _entities.GetComponent<Faction>(entity).Side;
+            Faction observer = _entities.GetComponent<Faction>(entity);
             Vector2 position = _entities.GetComponent<Transform>(entity).Position;
 
-            if (TryNearestContact(side, position, out Vector2 destination))
+            if (TryNearestContact(observer, position, out Vector2 destination))
             {
                 propulsion.Waypoint = destination;
             }
         }
     }
 
-    private bool TryNearestContact(FactionType side, Vector2 from, out Vector2 destination)
+    private bool TryNearestContact(Faction observer, Vector2 from, out Vector2 destination)
     {
         destination = Vector2.Zero;
         int best = -1;
         float bestDistance = float.MaxValue;
 
-        foreach (KeyValuePair<int, Track> entry in _tracking.EntriesFor(side))
+        foreach (KeyValuePair<int, Track> entry in _tracking.EntriesFor(observer.EffectiveId))
         {
-            if (!_entities.TryGetComponent(entry.Key, out Faction faction) || !Factions.AreHostile(side, faction.Side))
+            if (!_entities.TryGetComponent(entry.Key, out Faction faction) || !Factions.AreHostile(observer, faction))
             {
                 continue;
             }

@@ -1,0 +1,11 @@
+- id: interceptor
+  name: Wraith-class interceptor
+  parent: BaseHostile
+  components:
+  - type: Signature
+    value: 0.55
+  - type: ClassificationProfile
+    domain: Air
+    typeName: Wraith-class interceptor
+  - type: Health
+    max: 90

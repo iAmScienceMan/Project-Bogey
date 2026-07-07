@@ -1,0 +1,24 @@
+# AGM-161 - GPS/INS strike missile. Flies to a fixed coordinate
+- id: AGM-161
+  name: AGM-161 JASSM
+  parent: BaseMissile
+  components:
+  - type: Signature
+    value: 0.16
+  - type: ClassificationProfile
+    typeName: AGM-161 (GPS)
+  - type: Propulsion
+    maxSpeedKmPerTick: 4.0
+  - type: Projectile
+    damage: 150
+    detonationRangeKm: 3.0
+    pk: 1.0
+    rangeKm: 250
+    targetDomains: [Surface]
+    motorBurnTicksRemaining: 62
+    dragPerTick: 0.04
+  - type: Seeker
+    kind: Gps
+    acquisitionRangeKm: 0
+    fovDegrees: 0
+    datalink: false

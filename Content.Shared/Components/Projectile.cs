@@ -12,7 +12,7 @@ public sealed class Projectile : Component
 
     public int TargetEntity { get; set; }
 
-    public FactionType ObserverFaction { get; set; }
+    public string ObserverFaction { get; set; } = string.Empty;
 
     [DataField]
     public float Damage { get; set; }

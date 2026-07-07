@@ -25,7 +25,7 @@ internal static class TestScenarios
         => new(
             () => new List<IComponent>
             {
-                new Identity { Name = "Sensor" },
+                new MetaData { EntityName = "Sensor" },
                 new Faction { Side = FactionType.Friendly },
                 new Transform(),
                 new Sensor { RangeKm = rangeKm, MaxDetectProbability = maxDetect, FalloffExponent = falloff },
@@ -37,7 +37,7 @@ internal static class TestScenarios
         => new(
             () => new List<IComponent>
             {
-                new Identity { Name = name },
+                new MetaData { EntityName = name },
                 new Faction { Side = FactionType.Friendly },
                 new Transform(),
                 new Propulsion { MaxSpeedKmPerTick = maxSpeedKmPerTick },
@@ -50,7 +50,7 @@ internal static class TestScenarios
         => new(
             () => new List<IComponent>
             {
-                new Identity { Name = typeName },
+                new MetaData { EntityName = typeName },
                 new Faction { Side = FactionType.Hostile },
                 new Transform(),
                 new Signature { Value = signature },
@@ -79,7 +79,7 @@ internal static class TestScenarios
             id,
             () => new List<IComponent>
             {
-                new Identity { Name = id },
+                new MetaData { EntityName = id },
                 new Faction { Side = FactionType.Neutral },
                 new Transform(),
                 new Signature { Value = signature },
@@ -142,7 +142,7 @@ internal static class TestScenarios
             {
                 List<IComponent> components = new()
                 {
-                    new Identity { Name = typeName },
+                    new MetaData { EntityName = typeName },
                     new Faction { Side = side },
                     new Transform(),
                     new Signature { Value = signature },

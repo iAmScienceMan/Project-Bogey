@@ -27,4 +27,6 @@ public sealed class SimConfig
     public int StaleAfterIdleTicks { get; init; } = 8;
 
     public int DropAfterIdleTicks { get; init; } = 20;
+
+    public bool AiEnabled { get; set; } = true;
 }

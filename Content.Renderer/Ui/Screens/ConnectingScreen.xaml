@@ -1,0 +1,40 @@
+<!-- ReSharper disable All -->
+<Control xmlns="clr-namespace:Lattice.Renderer.Ui.Controls;assembly=Lattice.Renderer">
+
+  <BoxContainer Anchor="Center" Orientation="Vertical" DrawBackground="false" Separation="14">
+
+    <Label Text="PROJECT BOGEY" FontSize="30" Color="#73D9FF" />
+
+    <PanelContainer>
+      <BoxContainer Orientation="Vertical" DrawBackground="false" Separation="10" Padding="22">
+
+        <BoxContainer Name="ConnectingStatus" Orientation="Vertical" DrawBackground="false" Separation="8">
+          <Label Name="ConnectingLabel" Text="Connecting to server..." FontSize="16" Color="#CCDBEB" />
+          <Label Name="ConnectStatus" Text="Establishing connection" FontSize="12" Color="#9EAECC" />
+          <Button Name="CancelButton" Text="CANCEL" FontSize="14" MinWidth="260" Negative="true" />
+        </BoxContainer>
+
+        <BoxContainer Name="ConnectFail" Orientation="Vertical" DrawBackground="false" Separation="8" Visible="false">
+          <Label Text="Failed to connect to server:" FontSize="16" Color="#F06B62" />
+          <Label Name="ConnectFailReason" Text="" FontSize="13" Color="#CCDBEB" />
+          <BoxContainer Orientation="Horizontal" DrawBackground="false" Separation="8">
+            <Button Name="RetryButton" Text="RETRY" FontSize="14" MinWidth="126" />
+            <Button Name="BackButton" Text="BACK" FontSize="14" MinWidth="126" Negative="true" />
+          </BoxContainer>
+        </BoxContainer>
+
+        <BoxContainer Name="Disconnected" Orientation="Vertical" DrawBackground="false" Separation="8" Visible="false">
+          <Label Text="Disconnected from server:" FontSize="16" Color="#F06B62" />
+          <Label Name="DisconnectReason" Text="" FontSize="13" Color="#CCDBEB" />
+          <BoxContainer Orientation="Horizontal" DrawBackground="false" Separation="8">
+            <Button Name="ReconnectButton" Text="RECONNECT" FontSize="14" MinWidth="126" />
+            <Button Name="DisconnectedBackButton" Text="BACK" FontSize="14" MinWidth="126" Negative="true" />
+          </BoxContainer>
+        </BoxContainer>
+
+      </BoxContainer>
+    </PanelContainer>
+
+  </BoxContainer>
+
+</Control>

@@ -13,6 +13,8 @@ namespace Content.Sim;
 
 public sealed class SimRuntime
 {
+    public const string DefaultFaction = "friendly";
+
     private readonly EntityManager _entities = new();
     private readonly EventBus _bus = new();
     private readonly SimClock _clock = new();
@@ -20,6 +22,7 @@ public sealed class SimRuntime
     private readonly TrackingSystem _tracking = new();
     private readonly ILogbook _log;
     private readonly PrototypeManager _prototypes;
+    private readonly SimConfig _config;
 
     public event Action<WeaponFiredEvent>? WeaponFired;
 
@@ -35,8 +38,10 @@ public sealed class SimRuntime
         ILogManager? logManager = null)
     {
         _prototypes = prototypes;
+        _entities.Bus = _bus;
         Random rng = new(seed);
         SimConfig effectiveConfig = config ?? new SimConfig();
+        _config = effectiveConfig;
         ILogManager log = logManager ?? Logger.LogManager;
         _log = log.GetLogbook("sim.runtime");
 
@@ -100,6 +105,40 @@ public sealed class SimRuntime
         return true;
     }
 
+    public bool SpawnPlayerUnit(string username, string prototypeId, string unitName, Vector2 position)
+    {
+        if (!_prototypes.Has(prototypeId))
+        {
+            _log.Error($"Player unit prototype '{prototypeId}' does not exist; '{username}' gets nothing.");
+            return false;
+        }
+
+        int entity = SpawnEntity(prototypeId, position, Vector2.Zero, unitName);
+        Faction faction = _entities.GetComponent<Faction>(entity);
+        faction.Side = FactionType.Friendly;
+        faction.Id = username;
+        _log.Info($"Spawned '{unitName}' #{entity} for player '{username}' at ({position.X:0.##}, {position.Y:0.##}).");
+        return true;
+    }
+
+    public bool FactionHasUnits(string factionId)
+    {
+        foreach (int entity in _entities.Query<Faction>())
+        {
+            if (_entities.HasComponent<Projectile>(entity))
+            {
+                continue;
+            }
+
+            if (string.Equals(_entities.GetComponent<Faction>(entity).EffectiveId, factionId, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private int SpawnEntity(string prototypeId, Vector2 position, Vector2 velocity, string? name)
     {
         int entity = _prototypes.SpawnEntity(_entities, prototypeId);
@@ -110,9 +149,9 @@ public sealed class SimRuntime
             transform.Velocity = velocity;
         }
 
-        if (name is not null && _entities.TryGetComponent(entity, out Identity identity))
+        if (name is not null)
         {
-            identity.Name = name;
+            _entities.GetComponent<MetaData>(entity).EntityName = name;
         }
 
         _bus.PublishDirected(entity, new ComponentInit());
@@ -123,18 +162,20 @@ public sealed class SimRuntime
     {
         _clock.Advance();
         _systems.Update();
+        _entities.FlushDeletions();
     }
 
-    public bool IssueMoveOrder(string unitName, Vector2 destination)
+    public bool IssueMoveOrder(string unitName, Vector2 destination, string factionId = DefaultFaction)
     {
-        foreach (int entity in _entities.Query<Identity>())
+        foreach (int entity in _entities.Query<MetaData>())
         {
-            if (_entities.GetComponent<Faction>(entity).Side != FactionType.Friendly)
+            if (!_entities.TryGetComponent(entity, out Faction faction)
+                || !string.Equals(faction.EffectiveId, factionId, StringComparison.Ordinal))
             {
                 continue;
             }
 
-            if (!string.Equals(_entities.GetComponent<Identity>(entity).Name, unitName, StringComparison.Ordinal))
+            if (!string.Equals(_entities.GetComponent<MetaData>(entity).Name, unitName, StringComparison.Ordinal))
             {
                 continue;
             }
@@ -154,9 +195,9 @@ public sealed class SimRuntime
         return false;
     }
 
-    public bool IssueEngagement(string unitName, int trackId, string weapon, int count)
+    public bool IssueEngagement(string unitName, int trackId, string weapon, int count, string factionId = DefaultFaction)
     {
-        int shooter = FindArmedUnit(unitName);
+        int shooter = FindArmedUnit(unitName, factionId);
         if (shooter < 0)
         {
             return false;
@@ -179,7 +220,7 @@ public sealed class SimRuntime
 
         _bus.Publish(new EngagementOrderEvent
         {
-            Shooter = _entities.GetComponent<Identity>(shooter).Name,
+            Shooter = shooter,
             TrackId = trackId,
             Weapon = weapon,
             Count = Math.Max(1, count),
@@ -187,9 +228,9 @@ public sealed class SimRuntime
         return true;
     }
 
-    public bool SetLock(string unitName, int? trackId)
+    public bool SetLock(string unitName, int? trackId, string factionId = DefaultFaction)
     {
-        int unit = FindArmedUnit(unitName);
+        int unit = FindArmedUnit(unitName, factionId);
         if (unit < 0)
         {
             return false;
@@ -203,7 +244,7 @@ public sealed class SimRuntime
             return true;
         }
 
-        foreach (KeyValuePair<int, Track> entry in _tracking.EntriesFor(FactionType.Friendly))
+        foreach (KeyValuePair<int, Track> entry in _tracking.EntriesFor(factionId))
         {
             if (entry.Value.TrackId == id)
             {
@@ -216,9 +257,9 @@ public sealed class SimRuntime
         return false;
     }
 
-    public bool SetPosture(string unitName, WeaponPosture posture)
+    public bool SetPosture(string unitName, WeaponPosture posture, string factionId = DefaultFaction)
     {
-        int unit = FindArmedUnit(unitName);
+        int unit = FindArmedUnit(unitName, factionId);
         if (unit < 0)
         {
             return false;
@@ -230,14 +271,19 @@ public sealed class SimRuntime
     }
 
 
-    public TrackPictureSnapshot PublishSnapshot()
+    public TrackPictureSnapshot PublishSnapshot(
+        string factionId = DefaultFaction,
+        int speed = 1,
+        NameVisibility nameVisibility = NameVisibility.Detected,
+        IReadOnlyDictionary<string, uint>? playerColors = null)
     {
         return new TrackPictureSnapshot
         {
             Tick = _clock.CurrentTick,
-            Tracks = _tracking.TracksFor(FactionType.Friendly),
-            OwnUnits = CollectOwnUnits(),
-            Munitions = CollectMunitions(),
+            Speed = speed,
+            Tracks = CollectTracks(factionId, nameVisibility, playerColors),
+            OwnUnits = CollectOwnUnits(factionId),
+            Munitions = CollectMunitions(factionId),
         };
     }
 
@@ -274,6 +320,12 @@ public sealed class SimRuntime
         return entries;
     }
 
+    public void SetAiEnabled(bool enabled)
+    {
+        _config.AiEnabled = enabled;
+        _log.Info($"AI {(enabled ? "enabled" : "disabled")}.");
+    }
+
     public bool DebugSetPosition(int entityId, Vector2 position)
     {
         if (!_entities.HasComponent<Transform>(entityId))
@@ -285,14 +337,108 @@ public sealed class SimRuntime
         return true;
     }
 
-    private IReadOnlyList<OwnUnitView> CollectOwnUnits()
+    private IReadOnlyList<Track> CollectTracks(
+        string factionId,
+        NameVisibility nameVisibility,
+        IReadOnlyDictionary<string, uint>? playerColors)
+    {
+        List<Track> tracks = new();
+        HashSet<int> tracked = new();
+
+        foreach (KeyValuePair<int, Track> entry in _tracking.EntriesFor(factionId))
+        {
+            tracked.Add(entry.Key);
+            tracks.Add(RevealOwner(entry.Key, entry.Value, nameVisibility, playerColors));
+        }
+
+        if (nameVisibility == NameVisibility.Always && playerColors is not null)
+        {
+            foreach (int entity in _entities.Query<Transform, MetaData>())
+            {
+                if (tracked.Contains(entity) || _entities.HasComponent<Projectile>(entity))
+                {
+                    continue;
+                }
+
+                if (!_entities.TryGetComponent(entity, out Faction faction))
+                {
+                    continue;
+                }
+
+                string owner = faction.EffectiveId;
+                if (string.Equals(owner, factionId, StringComparison.Ordinal)
+                    || !playerColors.TryGetValue(owner, out uint color))
+                {
+                    continue;
+                }
+
+                Transform transform = _entities.GetComponent<Transform>(entity);
+                ClassificationProfile? profile =
+                    _entities.TryGetComponent(entity, out ClassificationProfile found) ? found : null;
+
+                tracks.Add(new Track
+                {
+                    TrackId = -entity,
+                    EstimatedPosition = transform.Position,
+                    EstimatedVelocity = transform.Velocity,
+                    PositionalErrorKm = 0f,
+                    Confidence = 1f,
+                    DomainGuess = profile?.Domain ?? ContactDomain.Unknown,
+                    TypeGuess = profile?.TypeName,
+                    LastUpdatedTick = _clock.CurrentTick,
+                    State = TrackState.Identified,
+                    UnitName = NameOf(entity),
+                    PlayerName = owner,
+                    PlayerColorRgb = color,
+                });
+            }
+        }
+
+        return tracks;
+    }
+
+    private Track RevealOwner(
+        int truthEntity,
+        Track track,
+        NameVisibility nameVisibility,
+        IReadOnlyDictionary<string, uint>? playerColors)
+    {
+        if (playerColors is null
+            || _entities.HasComponent<Projectile>(truthEntity)
+            || !_entities.TryGetComponent(truthEntity, out Faction faction)
+            || !playerColors.TryGetValue(faction.EffectiveId, out uint color))
+        {
+            return track;
+        }
+
+        bool revealed = nameVisibility switch
+        {
+            NameVisibility.Identified => track.State == TrackState.Identified,
+            _ => true,
+        };
+
+        if (!revealed)
+        {
+            return track;
+        }
+
+        return track with
+        {
+            UnitName = NameOf(truthEntity),
+            PlayerName = faction.EffectiveId,
+            PlayerColorRgb = color,
+        };
+    }
+
+    private IReadOnlyList<OwnUnitView> CollectOwnUnits(string factionId)
     {
         List<OwnUnitView> own = new();
-        IReadOnlyDictionary<int, Track> picture = _tracking.EntriesFor(FactionType.Friendly);
+        IReadOnlyDictionary<int, Track> picture = _tracking.EntriesFor(factionId);
 
         foreach (int entity in _entities.Query<Transform>())
         {
-            if (_entities.GetComponent<Faction>(entity).Side != FactionType.Friendly)
+            if (!_entities.TryGetComponent(entity, out Faction faction)
+                || !string.Equals(faction.EffectiveId, factionId, StringComparison.Ordinal))
             {
                 continue;
             }
@@ -313,6 +459,8 @@ public sealed class SimRuntime
                 lockedTrackId = lockedTrack.TrackId;
             }
 
+            Sprite? sprite = _entities.TryGetComponent(entity, out Sprite found2) ? found2 : null;
+
             own.Add(new OwnUnitView
             {
                 Name = name,
@@ -322,6 +470,9 @@ public sealed class SimRuntime
                 HullCurrent = health?.Current ?? 0f,
                 HullMax = health?.Max ?? 0f,
                 LockedTrackId = lockedTrackId,
+                Sprite = sprite?.Texture,
+                SpriteScale = sprite?.Scale ?? 1f,
+                SpriteVisible = sprite?.Visible ?? true,
                 Weapons = CollectWeapons(entity),
             });
         }
@@ -351,28 +502,32 @@ public sealed class SimRuntime
         return weapons;
     }
 
-    private IReadOnlyList<MunitionView> CollectMunitions()
+    private IReadOnlyList<MunitionView> CollectMunitions(string factionId)
     {
         List<MunitionView> munitions = new();
 
         foreach (int entity in _entities.Query<Projectile, Transform>())
         {
-            if (_entities.GetComponent<Faction>(entity).Side != FactionType.Friendly)
+            if (!_entities.TryGetComponent(entity, out Faction faction)
+                || !string.Equals(faction.EffectiveId, factionId, StringComparison.Ordinal))
             {
                 continue;
             }
 
             Transform transform = _entities.GetComponent<Transform>(entity);
             Seeker? seeker = _entities.TryGetComponent(entity, out Seeker found) ? found : null;
+            Sprite? sprite = _entities.TryGetComponent(entity, out Sprite found2) ? found2 : null;
 
             munitions.Add(new MunitionView
             {
                 Id = entity,
                 Position = transform.Position,
                 HeadingRadians = HeadingOf(transform.Velocity),
-                Faction = FactionType.Friendly,
                 Seeker = seeker?.Kind ?? SeekerType.Gps,
                 Locked = seeker?.Locked ?? false,
+                Sprite = sprite?.Texture,
+                SpriteScale = sprite?.Scale ?? 1f,
+                SpriteVisible = sprite?.Visible ?? true,
             });
         }
 
@@ -416,11 +571,17 @@ public sealed class SimRuntime
     private static float HeadingOf(Vector2 velocity)
         => velocity.LengthSquared() > 1e-6f ? MathF.Atan2(velocity.Y, velocity.X) : 0f;
 
-    private int FindArmedUnit(string unitName)
+    private int FindArmedUnit(string unitName, string factionId)
     {
-        foreach (int entity in _entities.Query<Loadout, Identity>())
+        foreach (int entity in _entities.Query<Loadout, MetaData>())
         {
-            if (string.Equals(_entities.GetComponent<Identity>(entity).Name, unitName, StringComparison.Ordinal))
+            if (!_entities.TryGetComponent(entity, out Faction faction)
+                || !string.Equals(faction.EffectiveId, factionId, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (string.Equals(_entities.GetComponent<MetaData>(entity).Name, unitName, StringComparison.Ordinal))
             {
                 return entity;
             }
@@ -430,7 +591,10 @@ public sealed class SimRuntime
     }
 
     private string NameOf(int entity)
-        => _entities.TryGetComponent(entity, out Identity identity) ? identity.Name : $"#{entity}";
+    {
+        string name = _entities.GetComponent<MetaData>(entity).Name;
+        return string.IsNullOrEmpty(name) ? $"#{entity}" : name;
+    }
 
     private static Vector2 ToVector2(IReadOnlyList<float> values, string prototypeName, string field)
     {

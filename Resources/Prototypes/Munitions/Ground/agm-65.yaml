@@ -1,0 +1,24 @@
+# AGM-65 - optical fire-and-forget anti-surface missile
+- id: AGM-65
+  name: AGM-65 Maverick
+  parent: BaseMissile
+  components:
+  - type: Signature
+    value: 0.18
+  - type: ClassificationProfile
+    typeName: AGM-65 (optical)
+  - type: Propulsion
+    maxSpeedKmPerTick: 3.6
+  - type: Projectile
+    damage: 75
+    detonationRangeKm: 1.5
+    pk: 0.95
+    rangeKm: 45
+    targetDomains: [Surface]
+    motorBurnTicksRemaining: 10
+    dragPerTick: 0.05
+  - type: Seeker
+    kind: Optical
+    acquisitionRangeKm: 16
+    fovDegrees: 30
+    datalink: false

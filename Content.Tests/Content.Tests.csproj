@@ -15,9 +15,11 @@
   <ItemGroup>
     <ProjectReference Include="..\Content.Sim\Content.Sim.csproj" />
     <ProjectReference Include="..\Content.Renderer\Content.Renderer.csproj" />
+    <ProjectReference Include="..\Content.Server\Content.Server.csproj" />
     <ProjectReference Include="..\Content.Shared\Content.Shared.csproj" />
     <ProjectReference Include="..\LatticeToolbox\Lattice.Renderer\Lattice.Renderer.csproj" />
     <ProjectReference Include="..\LatticeToolbox\Lattice.Sim\Lattice.Sim.csproj" />
+    <ProjectReference Include="..\LatticeToolbox\Lattice.Network\Lattice.Network.csproj" />
     <ProjectReference Include="..\LatticeToolbox\Lattice.Shared\Lattice.Shared.csproj" />
     <ProjectReference Include="..\LatticeToolbox\Lattice.Logging\Lattice.Logging.csproj" />
   </ItemGroup>

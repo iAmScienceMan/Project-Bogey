@@ -10,7 +10,7 @@ public sealed record MoveOrderEvent
 
 public sealed record ContactDetectedEvent
 {
-    public required FactionType ObserverFaction { get; init; }
+    public required string ObserverFaction { get; init; }
 
     public required Vector2 ObservedPosition { get; init; }
 
@@ -21,7 +21,7 @@ public sealed record ContactDetectedEvent
 
 public sealed record TrackDroppedEvent
 {
-    public required FactionType ObserverFaction { get; init; }
+    public required string ObserverFaction { get; init; }
 
     public required int TruthEntityId { get; init; }
 }
@@ -42,7 +42,7 @@ public sealed record EntityDestroyedEvent
 
 public sealed record EngagementOrderEvent
 {
-    public required string Shooter { get; init; }
+    public required int Shooter { get; init; }
 
     public required int TrackId { get; init; }
 

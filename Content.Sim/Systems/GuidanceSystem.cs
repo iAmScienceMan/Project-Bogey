@@ -39,7 +39,7 @@ public sealed class GuidanceSystem : EntitySystem
 
     public override void Update()
     {
-        foreach (int entity in new List<int>(_entities.Query<Projectile, Transform>()))
+        foreach (int entity in _entities.Query<Projectile, Transform>())
         {
             if (!_entities.TryGetComponent(entity, out Projectile projectile)
                 || !_entities.TryGetComponent(entity, out Transform transform))
@@ -180,7 +180,7 @@ public sealed class GuidanceSystem : EntitySystem
         {
             return _entities.HasComponent<Sensor>(candidate)
                 && _entities.TryGetComponent(candidate, out Faction emitter)
-                && Factions.AreHostile(projectile.ObserverFaction, emitter.Side);
+                && Factions.IsHostileTo(projectile.ObserverFaction, emitter);
         }
 
         if (seeker.Kind == SeekerType.SemiActiveRadar && !IsIlluminatedByShooter(projectile.OwnerEntity, candidate))
@@ -271,7 +271,7 @@ public sealed class GuidanceSystem : EntitySystem
     {
         bool hit = false;
 
-        foreach (int victim in new List<int>(_entities.Query<Transform, Health>()))
+        foreach (int victim in _entities.Query<Transform, Health>())
         {
             if (victim == munition || victim == projectile.OwnerEntity)
             {

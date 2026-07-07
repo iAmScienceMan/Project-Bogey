@@ -5,6 +5,7 @@ using Lattice.Renderer.Camera;
 using Lattice.Renderer.Gl;
 using Content.Renderer.RealTime;
 using Lattice.Renderer.Text;
+using Content.Shared;
 using Content.Shared.Tracks;
 using Content.Shared.Presentation;
 
@@ -22,8 +23,8 @@ public sealed class TacticalMapRenderer
     private const float MinSpritePx = 14f;
     private const float MinMunitionPx = 10f;
 
-    private static readonly Rgba OwnColor = new(0.30f, 0.85f, 1.0f);
     private static readonly Rgba LockColor = new(1.0f, 0.40f, 0.30f);
+    private static readonly Rgba PlayerNameColor = new(0.95f, 0.83f, 0.25f);
     private static readonly Rgba HullBackColor = new(0.15f, 0.15f, 0.18f, 0.6f);
     private static readonly Rgba MunitionColor = new(0.55f, 0.90f, 1.0f);
     private static readonly Rgba MunitionLockedColor = new(1.0f, 0.80f, 0.40f);
@@ -44,13 +45,17 @@ public sealed class TacticalMapRenderer
         float frameDt,
         string? selectedUnit,
         int? selectedTarget,
-        IReadOnlyDictionary<string, Vector2> pendingOrders)
+        IReadOnlyDictionary<string, Vector2> pendingOrders,
+        uint ownColorRgb)
     {
         TrackPictureSnapshot? current = session.Current;
         if (current is null)
         {
             return;
         }
+
+        (float ownR, float ownG, float ownB) = ColorRgbUtil.ToFloats(ownColorRgb);
+        Rgba ownColor = new(ownR, ownG, ownB);
 
         UpdateTrackVisuals(current, session.Previous, session.Alpha, frameDt);
 
@@ -68,7 +73,7 @@ public sealed class TacticalMapRenderer
         foreach ((OwnUnitView unit, Vector2 worldPos) in Interp.OwnUnits(session))
         {
             bool selected = string.Equals(unit.Name, selectedUnit, StringComparison.Ordinal);
-            DrawOwnUnit(prims, sprites, entitySprites, text, camera, unit, worldPos, selected);
+            DrawOwnUnit(prims, sprites, entitySprites, text, camera, unit, worldPos, selected, ownColor);
 
             if (selected && unit.LockedTrackId is { } lockedId && _visuals.TryGetValue(lockedId, out TrackVisual? lockedVisual))
             {
@@ -90,14 +95,19 @@ public sealed class TacticalMapRenderer
 
     private static void DrawMunition(PrimitiveBatch prims, SpriteBatch sprites, EntitySprites entitySprites, Camera2D camera, MunitionView munition, Vector2 world)
     {
+        if (!munition.SpriteVisible)
+        {
+            return;
+        }
+
         Vector2 screen = camera.WorldToScreen(world);
         Rgba color = munition.Locked ? MunitionLockedColor : MunitionColor;
         float rotation = -munition.HeadingRadians;
 
-        Texture? sprite = entitySprites.Munition;
+        Texture? sprite = entitySprites.Get(munition.Sprite) ?? entitySprites.Munition;
         if (sprite is not null)
         {
-            float sidePx = MathF.Max(MinMunitionPx, camera.KmToPixels(MunitionSideKm));
+            float sidePx = MathF.Max(MinMunitionPx, camera.KmToPixels(MunitionSideKm) * munition.SpriteScale);
             sprites.Draw(sprite, screen, new Vector2(sidePx, sidePx), color, rotation);
         }
         else
@@ -199,7 +209,15 @@ public sealed class TacticalMapRenderer
                 MarkerStyle.Dropped => 0.5f,
                 _ => 1f,
             };
-            sprites.Draw(sprite, screen, sidePx, new Rgba(1f, 1f, 1f, opacity * styleAlpha));
+
+            Rgba tint = new(1f, 1f, 1f, opacity * styleAlpha);
+            if (track.PlayerName is not null && track.PlayerColorRgb != 0)
+            {
+                (float r, float g, float b) = ColorRgbUtil.ToFloats(track.PlayerColorRgb);
+                tint = new Rgba(r, g, b, opacity * styleAlpha);
+            }
+
+            sprites.Draw(sprite, screen, sidePx, tint);
             topOffsetPx = sidePx * 0.5f;
         }
         else
@@ -214,6 +232,28 @@ public sealed class TacticalMapRenderer
         }
 
         DrawConfidenceBar(prims, screen - new Vector2(0f, topOffsetPx + 9f), confidence, baseColor, visual.Fade);
+
+        if (track.UnitName is not null)
+        {
+            DrawTrackLabel(text, screen, topOffsetPx, track, visual.Fade);
+        }
+    }
+
+    private static void DrawTrackLabel(TextBatch text, Vector2 screen, float topOffsetPx, Track track, float fade)
+    {
+        const float fontSize = 12f;
+        string unitPart = track.UnitName!;
+        string playerPart = track.PlayerName is null ? string.Empty : " (" + track.PlayerName + ")";
+
+        float unitWidth = TextBatch.Measure(unitPart, fontSize);
+        float totalWidth = unitWidth + TextBatch.Measure(playerPart, fontSize);
+        Vector2 origin = screen + new Vector2(-totalWidth * 0.5f, topOffsetPx + 6f);
+
+        text.Text(origin, fontSize, GlyphColor.WithAlpha(fade), unitPart);
+        if (playerPart.Length > 0)
+        {
+            text.Text(origin + new Vector2(unitWidth, 0f), fontSize, PlayerNameColor.WithAlpha(fade), playerPart);
+        }
     }
 
     private static void DrawMarkerShape(PrimitiveBatch prims, Vector2 screen, float radiusPx, MarkerStyle style, Rgba baseColor, float opacity)
@@ -250,21 +290,25 @@ public sealed class TacticalMapRenderer
         prims.FilledQuad(min, fillMax, color.WithAlpha(0.85f * fade));
     }
 
-    private static void DrawOwnUnit(PrimitiveBatch prims, SpriteBatch sprites, EntitySprites entitySprites, TextBatch text, Camera2D camera, OwnUnitView unit, Vector2 worldPos, bool selected)
+    private static void DrawOwnUnit(PrimitiveBatch prims, SpriteBatch sprites, EntitySprites entitySprites, TextBatch text, Camera2D camera, OwnUnitView unit, Vector2 worldPos, bool selected, Rgba ownColor)
     {
         Vector2 screen = camera.WorldToScreen(worldPos);
 
         if (unit.SensorRangeKm > 0f)
         {
-            prims.Ring(screen, camera.KmToPixels(unit.SensorRangeKm), OwnColor.WithAlpha(0.13f), 72);
+            prims.Ring(screen, camera.KmToPixels(unit.SensorRangeKm), ownColor.WithAlpha(0.13f), 72);
         }
 
-        Texture? sprite = entitySprites.OwnUnit;
+        Texture? sprite = entitySprites.Get(unit.Sprite);
         float halfExtentPx;
-        if (sprite is not null)
+        if (!unit.SpriteVisible)
         {
-            float sidePx = MathF.Max(MinSpritePx, camera.KmToPixels(SpriteSideKm));
-            sprites.Draw(sprite, screen, sidePx, new Rgba(1f, 1f, 1f, 1f));
+            halfExtentPx = MathF.Max(MinMarkerPx, camera.KmToPixels(OwnMarkerKm));
+        }
+        else if (sprite is not null)
+        {
+            float sidePx = MathF.Max(MinSpritePx, camera.KmToPixels(SpriteSideKm) * unit.SpriteScale);
+            sprites.Draw(sprite, screen, sidePx, ownColor);
             halfExtentPx = sidePx * 0.5f;
         }
         else
@@ -274,8 +318,8 @@ public sealed class TacticalMapRenderer
             Vector2 right = screen + new Vector2(s, 0f);
             Vector2 bottom = screen + new Vector2(0f, s);
             Vector2 left = screen + new Vector2(-s, 0f);
-            prims.FilledTriangle(top, right, bottom, OwnColor);
-            prims.FilledTriangle(top, bottom, left, OwnColor);
+            prims.FilledTriangle(top, right, bottom, ownColor);
+            prims.FilledTriangle(top, bottom, left, ownColor);
             halfExtentPx = s;
         }
 
@@ -289,7 +333,7 @@ public sealed class TacticalMapRenderer
             DrawHullBar(prims, screen + new Vector2(0f, halfExtentPx + 8f), unit.HullCurrent / unit.HullMax);
         }
 
-        text.Text(screen + new Vector2(halfExtentPx + 4f, -halfExtentPx), 12f, OwnColor, unit.Name);
+        text.Text(screen + new Vector2(halfExtentPx + 4f, -halfExtentPx), 12f, GlyphColor, unit.Name);
     }
 
     private static void DrawHullBar(PrimitiveBatch prims, Vector2 center, float fraction)

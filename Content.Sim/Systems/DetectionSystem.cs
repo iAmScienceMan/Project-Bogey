@@ -31,13 +31,18 @@ public sealed class DetectionSystem : EntitySystem
 
         foreach (int sensorEntity in sensors)
         {
-            FactionType observerSide = _entities.GetComponent<Faction>(sensorEntity).Side;
+            if (!_config.AiEnabled && _entities.HasComponent<Ai>(sensorEntity))
+            {
+                continue;
+            }
+
+            string observerFaction = _entities.GetComponent<Faction>(sensorEntity).EffectiveId;
             Sensor sensor = _entities.GetComponent<Sensor>(sensorEntity);
             Vector2 sensorPos = _entities.GetComponent<Transform>(sensorEntity).Position;
 
             foreach (int targetEntity in targets)
             {
-                if (_entities.GetComponent<Faction>(targetEntity).Side == observerSide)
+                if (string.Equals(_entities.GetComponent<Faction>(targetEntity).EffectiveId, observerFaction, StringComparison.Ordinal))
                 {
                     continue;
                 }
@@ -58,7 +63,7 @@ public sealed class DetectionSystem : EntitySystem
                 Vector2 observed = targetPos + NoiseOffset(distance, sensor.RangeKm);
                 _bus.PublishDirected(targetEntity, new ContactDetectedEvent
                 {
-                    ObserverFaction = observerSide,
+                    ObserverFaction = observerFaction,
                     ObservedPosition = observed,
                     DetectionStrength = p,
                     Tick = _clock.CurrentTick,

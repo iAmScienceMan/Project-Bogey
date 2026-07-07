@@ -1,0 +1,24 @@
+# AIM-9+ - short-range IR air-to-air missile
+- id: AIM-9PLUS
+  name: AIM-9+ Sidewinder
+  parent: BaseMissile
+  components:
+  - type: Signature
+    value: 0.14
+  - type: ClassificationProfile
+    typeName: AIM-9+ (IR)
+  - type: Propulsion
+    maxSpeedKmPerTick: 4.5
+  - type: Projectile
+    damage: 45
+    detonationRangeKm: 1.5
+    pk: 0.9
+    rangeKm: 35
+    targetDomains: [Air]
+    motorBurnTicksRemaining: 6
+    dragPerTick: 0.06
+  - type: Seeker
+    kind: Ir
+    acquisitionRangeKm: 14
+    fovDegrees: 40
+    datalink: false

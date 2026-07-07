@@ -5,6 +5,7 @@ using Lattice.Sim.Engine;
 namespace Content.Shared.Components;
 
 [RegisterComponent]
+[NetworkedComponent]
 public sealed class Propulsion : Component
 {
     [DataField]

@@ -92,21 +92,21 @@ public sealed class FireControlSystem : EntitySystem
     {
         remainder = order;
 
-        int shooter = ResolveUnit(order.Shooter);
-        if (shooter < 0)
+        int shooter = order.Shooter;
+        if (!_entities.HasComponent<Loadout>(shooter) || !_entities.HasComponent<Faction>(shooter))
         {
             return false;
         }
 
-        FactionType side = _entities.GetComponent<Faction>(shooter).Side;
-        IReadOnlyDictionary<int, Track> picture = _tracking.EntriesFor(side);
+        Faction side = _entities.GetComponent<Faction>(shooter);
+        IReadOnlyDictionary<int, Track> picture = _tracking.EntriesFor(side.EffectiveId);
 
         if (!TryResolveTrack(picture, order.TrackId, out int target, out Track track))
         {
             return false;
         }
 
-        if (!_entities.TryGetComponent(target, out Faction targetFaction) || !Factions.AreHostile(side, targetFaction.Side))
+        if (!_entities.TryGetComponent(target, out Faction targetFaction) || !Factions.AreHostile(side, targetFaction))
         {
             return false;
         }
@@ -165,15 +165,20 @@ public sealed class FireControlSystem : EntitySystem
     {
         foreach (int shooter in new List<int>(_entities.Query<Loadout, WeaponControl>()))
         {
+            if (!_config.AiEnabled && _entities.HasComponent<Ai>(shooter))
+            {
+                continue;
+            }
+
             WeaponPosture posture = _entities.GetComponent<WeaponControl>(shooter).Posture;
             if (posture == WeaponPosture.Hold)
             {
                 continue;
             }
 
-            FactionType side = _entities.GetComponent<Faction>(shooter).Side;
+            Faction side = _entities.GetComponent<Faction>(shooter);
             Vector2 origin = _entities.GetComponent<Transform>(shooter).Position;
-            IReadOnlyDictionary<int, Track> picture = _tracking.EntriesFor(side);
+            IReadOnlyDictionary<int, Track> picture = _tracking.EntriesFor(side.EffectiveId);
 
             foreach (WeaponMount mount in _entities.GetComponent<Loadout>(shooter).Mounts)
             {
@@ -228,7 +233,7 @@ public sealed class FireControlSystem : EntitySystem
     }
 
     private int SelectOffensiveTarget(
-        FactionType side,
+        Faction side,
         Vector2 origin,
         Projectile projectile,
         IReadOnlyDictionary<int, Track> picture,
@@ -247,7 +252,7 @@ public sealed class FireControlSystem : EntitySystem
                 continue;
             }
 
-            if (!_entities.TryGetComponent(truthEntity, out Faction faction) || !Factions.AreHostile(side, faction.Side))
+            if (!_entities.TryGetComponent(truthEntity, out Faction faction) || !Factions.AreHostile(side, faction))
             {
                 continue;
             }
@@ -275,7 +280,7 @@ public sealed class FireControlSystem : EntitySystem
 
     private void ServicePointDefense(
         int shooter,
-        FactionType side,
+        Faction side,
         Vector2 origin,
         WeaponMount mount,
         IReadOnlyDictionary<int, Track> picture)
@@ -291,7 +296,7 @@ public sealed class FireControlSystem : EntitySystem
                 continue;
             }
 
-            if (!_entities.TryGetComponent(truthEntity, out Faction faction) || !Factions.AreHostile(side, faction.Side))
+            if (!_entities.TryGetComponent(truthEntity, out Faction faction) || !Factions.AreHostile(side, faction))
             {
                 continue;
             }
@@ -328,7 +333,7 @@ public sealed class FireControlSystem : EntitySystem
         }
     }
 
-    private bool Fire(int shooter, FactionType side, Vector2 origin, int target, WeaponMount mount, Track track)
+    private bool Fire(int shooter, Faction side, Vector2 origin, int target, WeaponMount mount, Track track)
     {
         if (!_prototypes.Has(mount.ProjectilePrototype))
         {
@@ -353,10 +358,12 @@ public sealed class FireControlSystem : EntitySystem
 
         munition.OwnerEntity = shooter;
         munition.TargetEntity = target;
-        munition.ObserverFaction = side;
+        munition.ObserverFaction = side.EffectiveId;
         munition.Datum = GuidanceSystem.InterceptPoint(
             origin, munition.SpeedKmPerTick, track.EstimatedPosition, track.EstimatedVelocity);
-        _entities.GetComponent<Faction>(munitionEntity).Side = side;
+        Faction munitionFaction = _entities.GetComponent<Faction>(munitionEntity);
+        munitionFaction.Side = side.Side;
+        munitionFaction.Id = side.EffectiveId;
 
         _bus.Publish(new WeaponFiredEvent
         {
@@ -373,19 +380,6 @@ public sealed class FireControlSystem : EntitySystem
            && _prototypes.Get(mount.ProjectilePrototype).TryGetComponent(out Projectile projectile)
             ? projectile
             : null;
-
-    private int ResolveUnit(string name)
-    {
-        foreach (int entity in _entities.Query<Loadout, Identity>())
-        {
-            if (string.Equals(_entities.GetComponent<Identity>(entity).Name, name, StringComparison.Ordinal))
-            {
-                return entity;
-            }
-        }
-
-        return -1;
-    }
 
     private WeaponMount? FindOffensiveMount(int shooter, string weapon)
     {
@@ -428,5 +422,5 @@ public sealed class FireControlSystem : EntitySystem
         }
     }
 
-    private readonly record struct PendingOrder(string Shooter, int TrackId, string Weapon, int Remaining);
+    private readonly record struct PendingOrder(int Shooter, int TrackId, string Weapon, int Remaining);
 }

@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Globalization;
 using Content.Renderer.App;
 using Lattice.Renderer.Ui;
@@ -10,6 +9,7 @@ using Lattice.Renderer.Ui.Xaml;
 using Lattice.Shared.Changelog;
 using Lattice.Shared.Configuration;
 using Content.Shared.Configuration;
+using Content.Shared.Net;
 
 namespace Content.Renderer.Ui.Screens;
 
@@ -18,27 +18,20 @@ public sealed partial class MainMenuScreen : Control
 {
     private readonly IConfigurationManager _cfg;
     private readonly IChangelogManager _changelog;
-    private readonly IReadOnlyList<ScenarioInfo> _scenarios;
-    private int _scenarioIndex;
     private float _phase;
 
-    public MainMenuScreen(IConfigurationManager cfg, IChangelogManager changelog, IReadOnlyList<ScenarioInfo> scenarios)
+    public MainMenuScreen(IConfigurationManager cfg, IChangelogManager changelog)
     {
         _cfg = cfg;
         _changelog = changelog;
-        _scenarios = scenarios;
         LatticeXaml.Load(this);
 
-        CallsignEdit.Text = cfg.GetCVar(CCVars.PlayerCallsign);
-        SeedEdit.Text = cfg.GetCVar(CCVars.GameSeed).ToString(CultureInfo.InvariantCulture);
+        UsernameEdit.Text = cfg.GetCVar(CCVars.PlayerUsername);
+        AddressEdit.Text = cfg.GetCVar(CCVars.ClientAddress);
 
-        _scenarioIndex = FindScenarioIndex(cfg.GetCVar(CCVars.GameScenario));
-        RefreshScenarioButton();
-
-        DeployButton.OnPressed += Deploy;
-        ScenarioButton.OnPressed += CycleScenario;
-        CallsignEdit.OnSubmit += Deploy;
-        SeedEdit.OnSubmit += Deploy;
+        ConnectButton.OnPressed += Connect;
+        UsernameEdit.OnSubmit += Connect;
+        AddressEdit.OnSubmit += Connect;
         ChangelogButton.OnPressed += () => OnChangelog?.Invoke();
         OptionsButton.OnPressed += () => OnOptions?.Invoke();
         QuitButton.OnPressed += () => OnQuit?.Invoke();
@@ -46,7 +39,7 @@ public sealed partial class MainMenuScreen : Control
         RefreshChangelogButton();
     }
 
-    public event Action? OnDeploy;
+    public event Action<string, int>? OnConnect;
 
     public event Action? OnChangelog;
 
@@ -56,34 +49,6 @@ public sealed partial class MainMenuScreen : Control
 
     public void RefreshChangelogButton()
         => ChangelogButton.Text = _changelog.HasNewEntries ? "CHANGELOG (NEW)" : "CHANGELOG";
-
-    private int FindScenarioIndex(string id)
-    {
-        for (int i = 0; i < _scenarios.Count; i++)
-        {
-            if (string.Equals(_scenarios[i].Id, id, StringComparison.Ordinal))
-            {
-                return i;
-            }
-        }
-
-        return 0;
-    }
-
-    private void CycleScenario()
-    {
-        if (_scenarios.Count == 0)
-        {
-            return;
-        }
-
-        _scenarioIndex = (_scenarioIndex + 1) % _scenarios.Count;
-        _cfg.SetCVar(CCVars.GameScenario, _scenarios[_scenarioIndex].Id);
-        RefreshScenarioButton();
-    }
-
-    private void RefreshScenarioButton()
-        => ScenarioButton.Text = _scenarios.Count == 0 ? "-" : _scenarios[_scenarioIndex].Name;
 
     public override void FrameUpdate(float dt)
     {
@@ -102,16 +67,53 @@ public sealed partial class MainMenuScreen : Control
         base.Draw(prims, text);
     }
 
-    private void Deploy()
+    public static bool TryParseAddress(string input, out string host, out int port)
     {
-        string callsign = CallsignEdit.Text.Trim();
-        _cfg.SetCVar(CCVars.PlayerCallsign, callsign.Length == 0 ? CCVars.PlayerCallsign.DefaultValue : callsign);
+        host = string.Empty;
+        port = NetDefaults.Port;
 
-        if (int.TryParse(SeedEdit.Text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int seed))
+        string trimmed = input.Trim();
+        if (trimmed.Length == 0)
         {
-            _cfg.SetCVar(CCVars.GameSeed, seed);
+            return false;
         }
 
-        OnDeploy?.Invoke();
+        int colon = trimmed.LastIndexOf(':');
+        if (colon < 0)
+        {
+            host = trimmed;
+            return true;
+        }
+
+        string portPart = trimmed[(colon + 1)..];
+        if (!int.TryParse(portPart, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsedPort)
+            || parsedPort is < 1 or > 65535)
+        {
+            return false;
+        }
+
+        host = trimmed[..colon];
+        port = parsedPort;
+        return host.Length > 0;
+    }
+
+    private void Connect()
+    {
+        string username = UsernameEdit.Text.Trim();
+        if (username.Length == 0)
+        {
+            username = CCVars.PlayerUsername.DefaultValue;
+        }
+
+        if (!TryParseAddress(AddressEdit.Text, out string host, out int port))
+        {
+            ErrorLabel.Text = "Invalid server address - use ip or ip:port.";
+            return;
+        }
+
+        ErrorLabel.Text = string.Empty;
+        _cfg.SetCVar(CCVars.PlayerUsername, username);
+        _cfg.SetCVar(CCVars.ClientAddress, AddressEdit.Text.Trim());
+        OnConnect?.Invoke(host, port);
     }
 }

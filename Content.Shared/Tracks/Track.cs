@@ -34,4 +34,10 @@ public sealed record Track
     public required int LastUpdatedTick { get; init; }
 
     public required TrackState State { get; init; }
+
+    public string? UnitName { get; init; }
+
+    public string? PlayerName { get; init; }
+
+    public uint PlayerColorRgb { get; init; }
 }

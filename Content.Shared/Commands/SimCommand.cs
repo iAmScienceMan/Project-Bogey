@@ -45,3 +45,15 @@ public sealed record SpawnCommand : SimCommand
 
     public Vector2 Velocity { get; init; }
 }
+
+public sealed record TeleportCommand : SimCommand
+{
+    public required int EntityId { get; init; }
+
+    public required Vector2 Position { get; init; }
+}
+
+public sealed record AiCommand : SimCommand
+{
+    public required bool Enabled { get; init; }
+}

@@ -1,0 +1,25 @@
+# AIRS-T - a very agile short-range IR missile that can also kill inbound missiles
+- id: AIRS-T
+  name: AIRS-T
+  parent: BaseMissile
+  components:
+  - type: Signature
+    value: 0.12
+  - type: ClassificationProfile
+    typeName: AIRS-T (IR, anti-missile)
+  - type: Propulsion
+    maxSpeedKmPerTick: 6.0
+  - type: Projectile
+    damage: 30
+    detonationRangeKm: 1.2
+    pk: 0.9
+    rangeKm: 25
+    targetDomains: [Air, Munition]
+    motorBurnTicksRemaining: 5
+    dragPerTick: 0.07
+  - type: Seeker
+    kind: Ir
+    acquisitionRangeKm: 12
+    fovDegrees: 55
+    datalink: false
+    targetsMunitions: true

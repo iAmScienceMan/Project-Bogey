@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using Lattice.Renderer.Gl;
 using Content.Shared.Components;
@@ -10,37 +11,35 @@ namespace Content.Renderer.Map;
 
 public sealed class EntitySprites : IDisposable
 {
-    private readonly Texture? _own;
-    private readonly Texture? _air;
-    private readonly Texture? _surface;
-    private readonly Texture? _subsurface;
-    private readonly Texture? _unknown;
-    private readonly Texture? _munition;
+    private readonly Dictionary<string, Texture> _textures;
 
-    private EntitySprites(Texture? own, Texture? air, Texture? surface, Texture? subsurface, Texture? unknown, Texture? munition)
+    private EntitySprites(Dictionary<string, Texture> textures)
     {
-        _own = own;
-        _air = air;
-        _surface = surface;
-        _subsurface = subsurface;
-        _unknown = unknown;
-        _munition = munition;
+        _textures = textures;
     }
 
-    public Texture? OwnUnit => _own;
-
-    public Texture? Munition => _munition;
+    public Texture? Munition => Get("missile.png");
 
     public static EntitySprites Load(GL gl, string directory)
     {
-        return new EntitySprites(
-            TryLoad(gl, directory, "own.png"),
-            TryLoad(gl, directory, "air.png"),
-            TryLoad(gl, directory, "surface.png"),
-            TryLoad(gl, directory, "subsurface.png"),
-            TryLoad(gl, directory, "unknown.png"),
-            TryLoad(gl, directory, "missile.png"));
+        Dictionary<string, Texture> textures = new(StringComparer.OrdinalIgnoreCase);
+        if (Directory.Exists(directory))
+        {
+            foreach (string path in Directory.EnumerateFiles(directory, "*.png"))
+            {
+                Texture? texture = TryLoad(gl, path);
+                if (texture is not null)
+                {
+                    textures[Path.GetFileName(path)] = texture;
+                }
+            }
+        }
+
+        return new EntitySprites(textures);
     }
+
+    public Texture? Get(string? key)
+        => !string.IsNullOrEmpty(key) && _textures.TryGetValue(key, out Texture? texture) ? texture : null;
 
     public Texture? ForTrack(Track track)
     {
@@ -50,32 +49,24 @@ public sealed class EntitySprites : IDisposable
 
         return domain switch
         {
-            ContactDomain.Air => _air ?? _unknown,
-            ContactDomain.Surface => _surface ?? _unknown,
-            ContactDomain.Subsurface => _subsurface ?? _unknown,
-            ContactDomain.Munition => _munition ?? _unknown,
-            _ => _unknown,
+            ContactDomain.Air => Get("air.png") ?? Get("unknown.png"),
+            ContactDomain.Surface => Get("surface.png") ?? Get("unknown.png"),
+            ContactDomain.Subsurface => Get("subsurface.png") ?? Get("unknown.png"),
+            ContactDomain.Munition => Get("missile.png") ?? Get("unknown.png"),
+            _ => Get("unknown.png"),
         };
     }
 
     public void Dispose()
     {
-        _own?.Dispose();
-        _air?.Dispose();
-        _surface?.Dispose();
-        _subsurface?.Dispose();
-        _unknown?.Dispose();
-        _munition?.Dispose();
+        foreach (Texture texture in _textures.Values)
+        {
+            texture.Dispose();
+        }
     }
 
-    private static Texture? TryLoad(GL gl, string directory, string file)
+    private static Texture? TryLoad(GL gl, string path)
     {
-        string path = Path.Combine(directory, file);
-        if (!File.Exists(path))
-        {
-            return null;
-        }
-
         try
         {
             return Texture.FromFile(gl, path);

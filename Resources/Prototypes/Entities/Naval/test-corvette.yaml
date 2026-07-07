@@ -1,0 +1,31 @@
+- id: test-corvette
+  name: HNS Viper
+  parent: BaseHostile
+  components:
+  - type: Signature
+    value: 0.7
+  - type: Ai
+    behavior: Aggressive
+  - type: ClassificationProfile
+    domain: Surface
+    typeName: Viper-class missile corvette
+  - type: Sensor
+    rangeKm: 150
+    maxDetectProbability: 0.9
+    falloffExponent: 1.5
+  - type: Propulsion
+    maxSpeedKmPerTick: 0.4
+  - type: Health
+    max: 180
+  - type: Loadout
+    mounts:
+    - projectilePrototype: AGM-89
+      cooldownTicks: 20
+      magazineCapacity: 6
+    - pointDefense: true
+      pointDefensePk: 0.4
+      pointDefenseRangeKm: 8
+      cooldownTicks: 1
+      magazineCapacity: 150
+  - type: WeaponControl
+    posture: Free

@@ -1,0 +1,11 @@
+- id: submersible
+  name: Silt-class submersible
+  parent: BaseHostile
+  components:
+  - type: Signature
+    value: 0.18
+  - type: ClassificationProfile
+    domain: Subsurface
+    typeName: Silt-class submersible
+  - type: Health
+    max: 120

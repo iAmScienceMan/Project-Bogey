@@ -1,11 +1,13 @@
 id: combat-test
 name: Combat Test Range
 
-spawns:
-  - proto: test-doom
-    position: [0, 0]
-    name: Legion
+playerSpawn:
+  proto: test-doom
+  name: Legion
+  position: [0, 0]
+  spacingKm: 30
 
+spawns:
   # Air threats
   - proto: test-bandit
     position: [90, 20]

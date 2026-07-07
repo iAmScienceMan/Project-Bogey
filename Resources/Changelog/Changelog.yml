@@ -90,3 +90,59 @@ Entries:
       Message: Fixed a crash when a missile blast destroyed another missile in flight
     - Type: Tweak
       Message: Debug seeker view stops drawing the datum line past the aimpoint
+- Id: 11
+  Author: iamscienceman
+  Time: '2026-07-07T12:00:00.0000000+00:00'
+  Changes:
+    - Type: Add
+      Message: Added an SS14-style lobby with ready-up, round countdown and a unit color slider
+    - Type: Add
+      Message: Usernames are identity now; joining with a name already on the server is refused
+    - Type: Add
+      Message: Every player commands their own faction and spawns their own unit at round start
+    - Type: Add
+      Message: Detected player units show their unit name with the owner in yellow
+    - Type: Tweak
+      Message: The server freezes completely while empty and only loads the scenario at round start
+    - Type: Tweak
+      Message: Disconnecting keeps your units; reconnect with the same username to get them back
+    - Type: Remove
+      Message: Removed singleplayer; the client always connects to a server now
+    - Type: Fix
+      Message: Fixed missiles refusing to launch after the client/server split
+- Id: 12
+  Author: iamscienceman
+  Time: '2026-07-07T15:00:00.0000000+00:00'
+  Changes:
+    - Type: Add
+      Message: Added an admin system; the server CLI is a real terminal with admin/kick/golobby/speed/ai commands
+    - Type: Add
+      Message: Added connect, disconnect, status, players, kick, golobby, ai and net_graph console commands
+    - Type: Add
+      Message: Console now tab-completes commands and holding backspace repeats
+    - Type: Tweak
+      Message: Sim speed is admin-only now; the HUD speed buttons are gone
+    - Type: Tweak
+      Message: Restored the full CCVars registry; the server reads sim tuning from cvars
+    - Type: Fix
+      Message: Fixed the client crashing on unresolvable server addresses
+    - Type: Fix
+      Message: Menu fields and buttons now stretch to the panel width
+- Id: 13
+  Author: iamscienceman
+  Time: '2026-07-07T18:00:00.0000000+00:00'
+  Changes:
+    - Type: Tweak
+      Message: Server terminal commands run through the real command registry with help and usage errors
+    - Type: Add
+      Message: Admins get the ground-truth debug overlay back via debugoverlay, with right-click teleport
+    - Type: Add
+      Message: Added lobbytime, pausetimer and startround commands for controlling the inter-round countdown
+    - Type: Add
+      Message: Non-admin attempts at admin actions now get told off in the console
+    - Type: Tweak
+      Message: Disabling AI now freezes AI units completely - no moving, shooting or sensing
+    - Type: Tweak
+      Message: The changelog is scrollable and shows newest entries first
+    - Type: Fix
+      Message: Fixed speed set from the server console being wiped when the round started

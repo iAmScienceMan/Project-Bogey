@@ -69,29 +69,15 @@ public sealed partial class OptionsScreen : Control
 
     private void BuildBasicPage()
     {
-        AddTextRow(BasicPage, "CALLSIGN", CCVars.PlayerCallsign);
         AddTextRow(BasicPage, "UI SCALE", CVars.UiScale);
         AddTextRow(BasicPage, "TACTICAL ZOOM", CVars.RenderZoom);
         AddTextRow(BasicPage, "WINDOW WIDTH", CVars.RenderWidth);
         AddTextRow(BasicPage, "WINDOW HEIGHT", CVars.RenderHeight);
         AddToggleRow(BasicPage, "VSYNC", CVars.RenderVsync);
-        AddTextRow(BasicPage, "DEFAULT SPEED", CCVars.GameDefaultSpeed);
-        AddToggleRow(BasicPage, "START PAUSED", CCVars.GameStartPaused);
-        AddToggleRow(BasicPage, "DEBUG OVERLAY", CCVars.DebugOverlay);
     }
 
     private void BuildAdvancedPage()
     {
-        AddTextRow(AdvancedPage, "INITIAL CONFIDENCE", CCVars.SimInitialConfidence);
-        AddTextRow(AdvancedPage, "CONFIDENCE GAIN", CCVars.SimConfidenceGain);
-        AddTextRow(AdvancedPage, "CLASSIFY THRESHOLD", CCVars.SimClassifyThreshold);
-        AddTextRow(AdvancedPage, "IDENTIFY THRESHOLD", CCVars.SimIdentifyThreshold);
-        AddTextRow(AdvancedPage, "POS ERROR BASE (KM)", CCVars.SimPositionalErrorBase);
-        AddTextRow(AdvancedPage, "OBSERVATION NOISE (KM)", CCVars.SimObservationNoise);
-        AddTextRow(AdvancedPage, "DECAY FACTOR", CCVars.SimDecayFactor);
-        AddTextRow(AdvancedPage, "POS ERROR GROWTH (KM)", CCVars.SimPositionalErrorGrowth);
-        AddTextRow(AdvancedPage, "STALE AFTER (TICKS)", CCVars.SimStaleTicks);
-        AddTextRow(AdvancedPage, "DROP AFTER (TICKS)", CCVars.SimDropTicks);
         AddTextRow(AdvancedPage, "FONT PATH", CVars.RenderFontPath);
     }
 

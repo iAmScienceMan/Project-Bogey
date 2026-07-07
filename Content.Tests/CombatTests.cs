@@ -303,7 +303,13 @@ public sealed class CombatTests
             File.ReadAllText(Path.Combine(root.FullName, "Resources", "Scenarios", "combat-test.yaml")));
 
         SimRuntime sim = new(scenario, prototypes, seed: 12345);
-        sim.SetPosture("Legion", WeaponPosture.Free);
+        PlayerSpawnDefinition playerSpawn = scenario.PlayerSpawn;
+        sim.SpawnPlayerUnit(
+            "tester",
+            playerSpawn.Proto,
+            playerSpawn.Name,
+            new Vector2(playerSpawn.Position[0], playerSpawn.Position[1]));
+        sim.SetPosture("Legion", WeaponPosture.Free, "tester");
 
         CombatLog log = new();
         log.Attach(sim);
@@ -312,7 +318,7 @@ public sealed class CombatTests
         for (int tick = 0; tick < 250; tick++)
         {
             sim.Step();
-            sawMunition |= sim.PublishSnapshot().Munitions.Count > 0;
+            sawMunition |= sim.PublishSnapshot("tester").Munitions.Count > 0;
         }
 
         Assert.That(log.Fired, Is.Not.Empty, "no weapon was fired with the real combat-test content");
@@ -337,6 +343,12 @@ public sealed class CombatTests
             File.ReadAllText(Path.Combine(root.FullName, "Resources", "Scenarios", "default.yaml")));
 
         SimRuntime sim = new(scenario, prototypes, seed: 777);
+        PlayerSpawnDefinition playerSpawn = scenario.PlayerSpawn;
+        sim.SpawnPlayerUnit(
+            "tester",
+            playerSpawn.Proto,
+            playerSpawn.Name,
+            new Vector2(playerSpawn.Position[0], playerSpawn.Position[1]));
 
         CombatLog log = new();
         log.Attach(sim);

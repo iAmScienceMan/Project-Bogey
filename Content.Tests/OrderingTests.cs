@@ -88,7 +88,7 @@ public sealed class OrderingTests
         SpawnSpec stationary = new(
             () => new List<IComponent>
             {
-                new Identity { Name = "Tower" },
+                new MetaData { EntityName = "Tower" },
                 new Faction { Side = FactionType.Friendly },
                 new Transform(),
             },
@@ -110,7 +110,7 @@ public sealed class OrderingTests
         SpawnSpec hostileMover = new(
             () => new List<IComponent>
             {
-                new Identity { Name = "Bandit" },
+                new MetaData { EntityName = "Bandit" },
                 new Faction { Side = FactionType.Hostile },
                 new Transform(),
                 new Propulsion { MaxSpeedKmPerTick = 1f },

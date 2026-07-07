@@ -1,0 +1,42 @@
+# Abstract bases. These never spawn; they only contribute shared components
+# that concrete prototypes inherit and override field-by-field.
+- id: BaseUnit
+  abstract: true
+  components:
+  - type: Transform
+
+- id: BaseMissile
+  abstract: true
+  parent: BaseUnit
+  components:
+  - type: Faction
+    side: Neutral
+  - type: Health
+    max: 1
+  - type: ClassificationProfile
+    domain: Munition
+  - type: Sprite
+    texture: missile.png
+
+- id: BaseFriendlyShip
+  abstract: true
+  parent: BaseUnit
+  components:
+  - type: Faction
+    side: Friendly
+  - type: ClassificationProfile
+    domain: Surface
+  - type: Sensor
+    maxDetectProbability: 0.95
+    falloffExponent: 1.5
+  - type: WeaponControl
+    posture: Defensive
+  - type: Sprite
+    texture: surface.png
+
+- id: BaseHostile
+  abstract: true
+  parent: BaseUnit
+  components:
+  - type: Faction
+    side: Hostile

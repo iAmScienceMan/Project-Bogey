@@ -1,7 +1,5 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using Content.Renderer.App;
 using Lattice.Renderer.Ui.Controls;
 using Content.Renderer.Ui.Screens;
 using Lattice.Shared.Changelog;
@@ -18,11 +16,12 @@ public sealed class MainMenuScreenTests
     {
         ConfigurationManager cfg = new();
         cfg.RegisterCVars(typeof(CVars));
+        cfg.RegisterCVars(typeof(CCVars));
         return cfg;
     }
 
     private static MainMenuScreen Menu(ConfigurationManager cfg, IChangelogManager? changelog = null)
-        => new(cfg, changelog ?? new FakeChangelog(), new[] { new ScenarioInfo("default", "Meridian Patrol") });
+        => new(cfg, changelog ?? new FakeChangelog());
 
     private static Button Button(Control root, string text)
         => root.SelfAndDescendants().OfType<Button>().First(b => b.Text == text);
@@ -34,38 +33,106 @@ public sealed class MainMenuScreenTests
     public void Construct_SeedsFieldsFromConfig()
     {
         ConfigurationManager cfg = Config();
-        cfg.SetCVar(CCVars.PlayerCallsign, "ICEMAN");
-        cfg.SetCVar(CCVars.GameSeed, 4242);
+        cfg.SetCVar(CCVars.PlayerUsername, "ICEMAN");
+        cfg.SetCVar(CCVars.ClientAddress, "10.0.0.5:9000");
 
         MainMenuScreen screen = Menu(cfg);
 
         Assert.Multiple(() =>
         {
-            Assert.That(EditByPlaceholder(screen, "your callsign").Text, Is.EqualTo("ICEMAN"));
-            Assert.That(EditByPlaceholder(screen, "scenario seed").Text, Is.EqualTo("4242"));
+            Assert.That(EditByPlaceholder(screen, "Bogeyman").Text, Is.EqualTo("ICEMAN"));
+            Assert.That(EditByPlaceholder(screen, "ip or ip:port").Text, Is.EqualTo("10.0.0.5:9000"));
         });
     }
 
     [Test]
-    public void Deploy_WritesEditedValuesToConfig_AndRaisesEvent()
+    public void Connect_WritesEditedValuesToConfig_AndRaisesEvent()
     {
         ConfigurationManager cfg = Config();
         MainMenuScreen screen = Menu(cfg);
 
-        EditByPlaceholder(screen, "your callsign").Text = "  VIPER  ";
-        EditByPlaceholder(screen, "scenario seed").Text = "88";
+        EditByPlaceholder(screen, "Bogeyman").Text = "  VIPER  ";
+        EditByPlaceholder(screen, "ip or ip:port").Text = "192.168.1.4:9100";
 
-        bool deployed = false;
-        screen.OnDeploy += () => deployed = true;
+        string? host = null;
+        int port = 0;
+        screen.OnConnect += (h, p) =>
+        {
+            host = h;
+            port = p;
+        };
 
-        Button(screen, "DEPLOY").Press();
+        Button(screen, "CONNECT").Press();
 
         Assert.Multiple(() =>
         {
-            Assert.That(deployed, Is.True);
-            Assert.That(cfg.GetCVar(CCVars.PlayerCallsign), Is.EqualTo("VIPER"));
-            Assert.That(cfg.GetCVar(CCVars.GameSeed), Is.EqualTo(88));
+            Assert.That(host, Is.EqualTo("192.168.1.4"));
+            Assert.That(port, Is.EqualTo(9100));
+            Assert.That(cfg.GetCVar(CCVars.PlayerUsername), Is.EqualTo("VIPER"));
+            Assert.That(cfg.GetCVar(CCVars.ClientAddress), Is.EqualTo("192.168.1.4:9100"));
         });
+    }
+
+    [Test]
+    public void Connect_DefaultsPortWhenOmitted()
+    {
+        ConfigurationManager cfg = Config();
+        MainMenuScreen screen = Menu(cfg);
+
+        EditByPlaceholder(screen, "ip or ip:port").Text = "play.example.com";
+
+        int port = 0;
+        string? host = null;
+        screen.OnConnect += (h, p) =>
+        {
+            host = h;
+            port = p;
+        };
+
+        Button(screen, "CONNECT").Press();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(host, Is.EqualTo("play.example.com"));
+            Assert.That(port, Is.EqualTo(8712));
+        });
+    }
+
+    [Test]
+    public void Connect_RejectsInvalidAddress()
+    {
+        ConfigurationManager cfg = Config();
+        MainMenuScreen screen = Menu(cfg);
+
+        EditByPlaceholder(screen, "ip or ip:port").Text = "host:notaport";
+
+        bool connected = false;
+        screen.OnConnect += (_, _) => connected = true;
+
+        Button(screen, "CONNECT").Press();
+
+        Assert.That(connected, Is.False);
+    }
+
+    [TestCase("localhost", "localhost", 8712, true)]
+    [TestCase("127.0.0.1:9000", "127.0.0.1", 9000, true)]
+    [TestCase("", "", 0, false)]
+    [TestCase(":9000", "", 0, false)]
+    [TestCase("host:0", "", 0, false)]
+    [TestCase("host:70000", "", 0, false)]
+    public void TryParseAddress_HandlesFormats(string input, string expectedHost, int expectedPort, bool expectedOk)
+    {
+        bool ok = MainMenuScreen.TryParseAddress(input, out string host, out int port);
+
+        Assert.That(ok, Is.EqualTo(expectedOk));
+        if (expectedOk)
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(host, Is.EqualTo(expectedHost));
+                Assert.That(port, Is.EqualTo(expectedPort));
+            });
+        }
     }
 
     [Test]

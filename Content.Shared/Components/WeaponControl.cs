@@ -10,6 +10,7 @@ public enum WeaponPosture
 }
 
 [RegisterComponent]
+[NetworkedComponent]
 public sealed class WeaponControl : Component
 {
     [DataField]

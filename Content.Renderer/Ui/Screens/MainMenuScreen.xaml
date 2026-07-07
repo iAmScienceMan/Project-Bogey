@@ -9,19 +9,19 @@
     <PanelContainer>
       <BoxContainer Orientation="Vertical" DrawBackground="false" Separation="8" Padding="18">
 
-        <GridContainer Columns="2" Separation="10">
-          <Label Text="CALLSIGN" FontSize="14" Color="#CCDBEB" />
-          <LineEdit Name="CallsignEdit" MinWidth="220" FontSize="14" PlaceHolder="your callsign" />
-          <Label Text="SEED" FontSize="14" Color="#CCDBEB" />
-          <LineEdit Name="SeedEdit" MinWidth="220" FontSize="14" Numeric="true" PlaceHolder="scenario seed" />
-          <Label Text="SCENARIO" FontSize="14" Color="#CCDBEB" />
-          <Button Name="ScenarioButton" MinWidth="220" FontSize="14" />
+        <GridContainer Columns="2" Separation="10" HorizontalExpand="true">
+          <Label Text="USERNAME" FontSize="14" Color="#CCDBEB" />
+          <LineEdit Name="UsernameEdit" MinWidth="140" FontSize="14" PlaceHolder="Bogeyman" HorizontalExpand="true" />
+          <Label Text="SERVER ADDRESS" FontSize="14" Color="#CCDBEB" />
+          <LineEdit Name="AddressEdit" MinWidth="140" FontSize="14" PlaceHolder="ip or ip:port" HorizontalExpand="true" />
         </GridContainer>
 
-        <Button Name="DeployButton" Text="DEPLOY" FontSize="16" MinWidth="280" />
-        <Button Name="ChangelogButton" Text="CHANGELOG" FontSize="16" MinWidth="280" />
-        <Button Name="OptionsButton" Text="OPTIONS" FontSize="16" MinWidth="280" />
-        <Button Name="QuitButton" Text="QUIT" FontSize="16" MinWidth="280" Negative="true" />
+        <Label Name="ErrorLabel" FontSize="12" Color="#F06B62" Text="" />
+
+        <Button Name="ConnectButton" Text="CONNECT" FontSize="16" MinWidth="300" HorizontalExpand="true" />
+        <Button Name="ChangelogButton" Text="CHANGELOG" FontSize="16" MinWidth="300" HorizontalExpand="true" />
+        <Button Name="OptionsButton" Text="OPTIONS" FontSize="16" MinWidth="300" HorizontalExpand="true" />
+        <Button Name="QuitButton" Text="QUIT" FontSize="16" MinWidth="300" Negative="true" HorizontalExpand="true" />
 
       </BoxContainer>
     </PanelContainer>

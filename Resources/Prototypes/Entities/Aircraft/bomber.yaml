@@ -1,0 +1,22 @@
+- id: bomber
+  name: Goliath-class bomber
+  parent: BaseHostile
+  components:
+  - type: Signature
+    value: 0.9
+  - type: ClassificationProfile
+    domain: Air
+    typeName: Goliath-class heavy bomber
+  - type: Health
+    max: 150
+  - type: Sensor
+    rangeKm: 140
+    maxDetectProbability: 0.85
+    falloffExponent: 1.5
+  - type: Loadout
+    mounts:
+    - projectilePrototype: AGM-89
+      cooldownTicks: 30
+      magazineCapacity: 4
+  - type: WeaponControl
+    posture: Free

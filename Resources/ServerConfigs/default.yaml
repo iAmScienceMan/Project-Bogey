@@ -1,0 +1,10 @@
+id: default
+name: Default Skirmish
+scenario: default
+seed: 1337
+tickRate: 5
+port: 8712
+
+# Usernames that get admin on connect. The server console can also grant
+# admin at runtime with `admin <username>`.
+admins: []
