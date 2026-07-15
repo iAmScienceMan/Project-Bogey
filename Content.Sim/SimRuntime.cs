@@ -17,7 +17,7 @@ public sealed class SimRuntime
 
     private readonly EntityManager _entities = new();
     private readonly EventBus _bus = new();
-    private readonly SimClock _clock = new();
+    private readonly SimClock _clock;
     private readonly SystemManager _systems = new();
     private readonly TrackingSystem _tracking = new();
     private readonly ILogbook _log;
@@ -35,9 +35,11 @@ public sealed class SimRuntime
         PrototypeManager prototypes,
         int seed,
         SimConfig? config = null,
-        ILogManager? logManager = null)
+        ILogManager? logManager = null,
+        double dt = 1.0)
     {
         _prototypes = prototypes;
+        _clock = new SimClock(dt);
         _entities.Bus = _bus;
         Random rng = new(seed);
         SimConfig effectiveConfig = config ?? new SimConfig();
@@ -100,7 +102,7 @@ public sealed class SimRuntime
             return false;
         }
 
-        int entity = SpawnEntity(prototypeId, position, velocity, null);
+        EntityUid entity = SpawnEntity(prototypeId, position, velocity, null);
         _log.Info($"Spawned entity #{entity} from prototype '{prototypeId}' at ({position.X:0.##}, {position.Y:0.##}).");
         return true;
     }
@@ -113,17 +115,21 @@ public sealed class SimRuntime
             return false;
         }
 
-        int entity = SpawnEntity(prototypeId, position, Vector2.Zero, unitName);
+        EntityUid entity = SpawnEntity(prototypeId, position, Vector2.Zero, unitName);
         Faction faction = _entities.GetComponent<Faction>(entity);
         faction.Side = FactionType.Friendly;
         faction.Id = username;
+        if (!_entities.HasComponent<PlayerControlled>(entity))
+        {
+            _entities.AddComponent(entity, new PlayerControlled());
+        }
         _log.Info($"Spawned '{unitName}' #{entity} for player '{username}' at ({position.X:0.##}, {position.Y:0.##}).");
         return true;
     }
 
     public bool FactionHasUnits(string factionId)
     {
-        foreach (int entity in _entities.Query<Faction>())
+        foreach (EntityUid entity in _entities.Query<Faction>())
         {
             if (_entities.HasComponent<Projectile>(entity))
             {
@@ -139,9 +145,9 @@ public sealed class SimRuntime
         return false;
     }
 
-    private int SpawnEntity(string prototypeId, Vector2 position, Vector2 velocity, string? name)
+    private EntityUid SpawnEntity(string prototypeId, Vector2 position, Vector2 velocity, string? name)
     {
-        int entity = _prototypes.SpawnEntity(_entities, prototypeId);
+        EntityUid entity = _prototypes.SpawnEntity(_entities, prototypeId);
 
         if (_entities.TryGetComponent(entity, out Transform transform))
         {
@@ -167,7 +173,7 @@ public sealed class SimRuntime
 
     public bool IssueMoveOrder(string unitName, Vector2 destination, string factionId = DefaultFaction)
     {
-        foreach (int entity in _entities.Query<MetaData>())
+        foreach (EntityUid entity in _entities.Query<MetaData>())
         {
             if (!_entities.TryGetComponent(entity, out Faction faction)
                 || !string.Equals(faction.EffectiveId, factionId, StringComparison.Ordinal))
@@ -197,8 +203,8 @@ public sealed class SimRuntime
 
     public bool IssueEngagement(string unitName, int trackId, string weapon, int count, string factionId = DefaultFaction)
     {
-        int shooter = FindArmedUnit(unitName, factionId);
-        if (shooter < 0)
+        EntityUid shooter = FindArmedUnit(unitName, factionId);
+        if (!shooter.Valid)
         {
             return false;
         }
@@ -230,8 +236,8 @@ public sealed class SimRuntime
 
     public bool SetLock(string unitName, int? trackId, string factionId = DefaultFaction)
     {
-        int unit = FindArmedUnit(unitName, factionId);
-        if (unit < 0)
+        EntityUid unit = FindArmedUnit(unitName, factionId);
+        if (!unit.Valid)
         {
             return false;
         }
@@ -239,12 +245,12 @@ public sealed class SimRuntime
         WeaponControl control = _entities.GetComponent<WeaponControl>(unit);
         if (trackId is not { } id)
         {
-            control.LockedTarget = -1;
+            control.LockedTarget = EntityUid.Invalid;
             _log.Info($"Unit '{unitName}' released its radar lock.");
             return true;
         }
 
-        foreach (KeyValuePair<int, Track> entry in _tracking.EntriesFor(factionId))
+        foreach (KeyValuePair<EntityUid, Track> entry in _tracking.EntriesFor(factionId))
         {
             if (entry.Value.TrackId == id)
             {
@@ -259,8 +265,8 @@ public sealed class SimRuntime
 
     public bool SetPosture(string unitName, WeaponPosture posture, string factionId = DefaultFaction)
     {
-        int unit = FindArmedUnit(unitName, factionId);
-        if (unit < 0)
+        EntityUid unit = FindArmedUnit(unitName, factionId);
+        if (!unit.Valid)
         {
             return false;
         }
@@ -292,7 +298,7 @@ public sealed class SimRuntime
     {
         List<GroundTruthEntry> entries = new();
 
-        foreach (int entity in _entities.Query<Transform>())
+        foreach (EntityUid entity in _entities.Query<Transform>())
         {
             Transform transform = _entities.GetComponent<Transform>(entity);
             Faction faction = _entities.GetComponent<Faction>(entity);
@@ -308,7 +314,7 @@ public sealed class SimRuntime
 
             entries.Add(new GroundTruthEntry
             {
-                EntityId = entity,
+                EntityId = entity.Id,
                 Name = name,
                 Faction = faction.Side,
                 Position = transform.Position,
@@ -328,12 +334,13 @@ public sealed class SimRuntime
 
     public bool DebugSetPosition(int entityId, Vector2 position)
     {
-        if (!_entities.HasComponent<Transform>(entityId))
+        EntityUid entity = new(entityId);
+        if (!_entities.HasComponent<Transform>(entity))
         {
             return false;
         }
 
-        _entities.GetComponent<Transform>(entityId).Position = position;
+        _entities.GetComponent<Transform>(entity).Position = position;
         return true;
     }
 
@@ -343,9 +350,9 @@ public sealed class SimRuntime
         IReadOnlyDictionary<string, uint>? playerColors)
     {
         List<Track> tracks = new();
-        HashSet<int> tracked = new();
+        HashSet<EntityUid> tracked = new();
 
-        foreach (KeyValuePair<int, Track> entry in _tracking.EntriesFor(factionId))
+        foreach (KeyValuePair<EntityUid, Track> entry in _tracking.EntriesFor(factionId))
         {
             tracked.Add(entry.Key);
             tracks.Add(RevealOwner(entry.Key, entry.Value, nameVisibility, playerColors));
@@ -353,7 +360,7 @@ public sealed class SimRuntime
 
         if (nameVisibility == NameVisibility.Always && playerColors is not null)
         {
-            foreach (int entity in _entities.Query<Transform, MetaData>())
+            foreach (EntityUid entity in _entities.Query<Transform, MetaData>())
             {
                 if (tracked.Contains(entity) || _entities.HasComponent<Projectile>(entity))
                 {
@@ -378,7 +385,7 @@ public sealed class SimRuntime
 
                 tracks.Add(new Track
                 {
-                    TrackId = -entity,
+                    TrackId = SyntheticTrackId(entity),
                     EstimatedPosition = transform.Position,
                     EstimatedVelocity = transform.Velocity,
                     PositionalErrorKm = 0f,
@@ -398,7 +405,7 @@ public sealed class SimRuntime
     }
 
     private Track RevealOwner(
-        int truthEntity,
+        EntityUid truthEntity,
         Track track,
         NameVisibility nameVisibility,
         IReadOnlyDictionary<string, uint>? playerColors)
@@ -433,9 +440,9 @@ public sealed class SimRuntime
     private IReadOnlyList<OwnUnitView> CollectOwnUnits(string factionId)
     {
         List<OwnUnitView> own = new();
-        IReadOnlyDictionary<int, Track> picture = _tracking.EntriesFor(factionId);
+        IReadOnlyDictionary<EntityUid, Track> picture = _tracking.EntriesFor(factionId);
 
-        foreach (int entity in _entities.Query<Transform>())
+        foreach (EntityUid entity in _entities.Query<Transform>())
         {
             if (!_entities.TryGetComponent(entity, out Faction faction)
                 || !string.Equals(faction.EffectiveId, factionId, StringComparison.Ordinal))
@@ -454,7 +461,7 @@ public sealed class SimRuntime
             Health? health = _entities.TryGetComponent(entity, out Health hull) ? hull : null;
 
             int? lockedTrackId = null;
-            if (control is { LockedTarget: >= 0 } && picture.TryGetValue(control.LockedTarget, out Track? lockedTrack))
+            if (control is not null && control.LockedTarget.Valid && picture.TryGetValue(control.LockedTarget, out Track? lockedTrack))
             {
                 lockedTrackId = lockedTrack.TrackId;
             }
@@ -480,7 +487,7 @@ public sealed class SimRuntime
         return own;
     }
 
-    private IReadOnlyList<WeaponStatusView> CollectWeapons(int entity)
+    private IReadOnlyList<WeaponStatusView> CollectWeapons(EntityUid entity)
     {
         if (!_entities.TryGetComponent(entity, out Loadout loadout))
         {
@@ -506,7 +513,7 @@ public sealed class SimRuntime
     {
         List<MunitionView> munitions = new();
 
-        foreach (int entity in _entities.Query<Projectile, Transform>())
+        foreach (EntityUid entity in _entities.Query<Projectile, Transform>())
         {
             if (!_entities.TryGetComponent(entity, out Faction faction)
                 || !string.Equals(faction.EffectiveId, factionId, StringComparison.Ordinal))
@@ -515,16 +522,29 @@ public sealed class SimRuntime
             }
 
             Transform transform = _entities.GetComponent<Transform>(entity);
+            Projectile projectile = _entities.GetComponent<Projectile>(entity);
             Seeker? seeker = _entities.TryGetComponent(entity, out Seeker found) ? found : null;
             Sprite? sprite = _entities.TryGetComponent(entity, out Sprite found2) ? found2 : null;
 
+            EntityUid aimEntity = seeker is { Locked: true } ? seeker.LockedEntity : projectile.TargetEntity;
+            Vector2? targetPosition = _entities.TryGetComponent(aimEntity, out Transform aimTransform)
+                ? aimTransform.Position
+                : null;
+
             munitions.Add(new MunitionView
             {
-                Id = entity,
+                Id = entity.Id,
                 Position = transform.Position,
                 HeadingRadians = HeadingOf(transform.Velocity),
                 Seeker = seeker?.Kind ?? SeekerType.Gps,
                 Locked = seeker?.Locked ?? false,
+                FovDegrees = seeker?.FovDegrees ?? 360f,
+                AcquisitionRangeKm = seeker?.AcquisitionRangeKm ?? 0f,
+                Datum = projectile.Datum,
+                DatumPassed = projectile.DatumPassed,
+                Ballistic = projectile.Ballistic,
+                Finishing = projectile.Finishing,
+                TargetPosition = targetPosition,
                 Sprite = sprite?.Texture,
                 SpriteScale = sprite?.Scale ?? 1f,
                 SpriteVisible = sprite?.Visible ?? true,
@@ -538,20 +558,20 @@ public sealed class SimRuntime
     {
         List<MunitionDebug> munitions = new();
 
-        foreach (int entity in _entities.Query<Projectile, Transform>())
+        foreach (EntityUid entity in _entities.Query<Projectile, Transform>())
         {
             Projectile projectile = _entities.GetComponent<Projectile>(entity);
             Transform transform = _entities.GetComponent<Transform>(entity);
             Seeker? seeker = _entities.TryGetComponent(entity, out Seeker found) ? found : null;
 
-            int aimEntity = seeker is { LockedEntity: >= 0 } ? seeker.LockedEntity : projectile.TargetEntity;
+            EntityUid aimEntity = seeker is { Locked: true } ? seeker.LockedEntity : projectile.TargetEntity;
             Vector2? targetPosition = _entities.TryGetComponent(aimEntity, out Transform target)
                 ? target.Position
                 : null;
 
             munitions.Add(new MunitionDebug
             {
-                Id = entity,
+                Id = entity.Id,
                 Faction = _entities.GetComponent<Faction>(entity).Side,
                 Position = transform.Position,
                 HeadingRadians = HeadingOf(transform.Velocity),
@@ -571,9 +591,11 @@ public sealed class SimRuntime
     private static float HeadingOf(Vector2 velocity)
         => velocity.LengthSquared() > 1e-6f ? MathF.Atan2(velocity.Y, velocity.X) : 0f;
 
-    private int FindArmedUnit(string unitName, string factionId)
+    private static int SyntheticTrackId(EntityUid entity) => -entity.Id;
+
+    private EntityUid FindArmedUnit(string unitName, string factionId)
     {
-        foreach (int entity in _entities.Query<Loadout, MetaData>())
+        foreach (EntityUid entity in _entities.Query<Loadout, MetaData>())
         {
             if (!_entities.TryGetComponent(entity, out Faction faction)
                 || !string.Equals(faction.EffectiveId, factionId, StringComparison.Ordinal))
@@ -587,10 +609,10 @@ public sealed class SimRuntime
             }
         }
 
-        return -1;
+        return EntityUid.Invalid;
     }
 
-    private string NameOf(int entity)
+    private string NameOf(EntityUid entity)
     {
         string name = _entities.GetComponent<MetaData>(entity).Name;
         return string.IsNullOrEmpty(name) ? $"#{entity}" : name;

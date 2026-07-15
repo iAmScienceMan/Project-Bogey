@@ -13,13 +13,13 @@ public sealed class EntityLifecycleTests
         EntityManager entities = new();
         for (int i = 0; i < 5; i++)
         {
-            int entity = entities.CreateEntity();
+            EntityUid entity = entities.CreateEntity();
             entities.AddComponent(entity, new Signature { Value = i });
         }
 
         Assert.DoesNotThrow(() =>
         {
-            foreach (int entity in entities.Query<Signature>())
+            foreach (EntityUid entity in entities.Query<Signature>())
             {
                 entities.DestroyEntity(entity);
             }
@@ -33,7 +33,7 @@ public sealed class EntityLifecycleTests
     {
         EventBus bus = new();
         EntityManager entities = new() { Bus = bus };
-        int entity = entities.CreateEntity();
+        EntityUid entity = entities.CreateEntity();
         entities.AddComponent(entity, new Signature { Value = 3f });
 
         bool fired = false;
@@ -61,7 +61,7 @@ public sealed class EntityLifecycleTests
     {
         EventBus bus = new();
         EntityManager entities = new() { Bus = bus };
-        int entity = entities.CreateEntity();
+        EntityUid entity = entities.CreateEntity();
 
         int fired = 0;
         bus.SubscribeDirected<EntityTerminating>((_, _) => fired++);
@@ -78,7 +78,7 @@ public sealed class EntityLifecycleTests
     public void QueueDeletion_DefersUntilFlush()
     {
         EntityManager entities = new();
-        int entity = entities.CreateEntity();
+        EntityUid entity = entities.CreateEntity();
         entities.AddComponent(entity, new Signature());
 
         entities.QueueDeletion(entity);
@@ -93,7 +93,7 @@ public sealed class EntityLifecycleTests
     {
         EventBus bus = new();
         EntityManager entities = new() { Bus = bus };
-        int entity = entities.CreateEntity();
+        EntityUid entity = entities.CreateEntity();
 
         int fired = 0;
         bus.SubscribeDirected<EntityTerminating>((_, _) => fired++);

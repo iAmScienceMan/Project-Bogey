@@ -23,11 +23,11 @@ public sealed class ClassificationSystem : EntitySystem
     {
         foreach (string faction in new List<string>(_tracking.KnownFactions))
         {
-            List<KeyValuePair<int, Track>> entries = new(_tracking.EntriesFor(faction));
+            List<KeyValuePair<EntityUid, Track>> entries = new(_tracking.EntriesFor(faction));
 
-            foreach (KeyValuePair<int, Track> entry in entries)
+            foreach (KeyValuePair<EntityUid, Track> entry in entries)
             {
-                int truthEntity = entry.Key;
+                EntityUid truthEntity = entry.Key;
                 Track track = entry.Value;
 
                 if (track.LastUpdatedTick != _clock.CurrentTick)

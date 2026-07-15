@@ -1,7 +1,6 @@
 using System;
-using Content.Renderer.App;
-using Lattice.Renderer.Gl;
-using Lattice.Renderer.Text;
+using System.Numerics;
+using Content.Renderer.Ui.Controls;
 using Lattice.Renderer.Ui;
 using Lattice.Renderer.Ui.Controls;
 using Lattice.Renderer.Ui.Xaml;
@@ -18,18 +17,18 @@ public enum ConnectingPage
 [GenerateTypedNameReferences]
 public sealed partial class ConnectingScreen : Control
 {
-    private float _phase;
+    private readonly LinkIndicator _indicator = new() { Size = 64f };
     private float _dots;
 
     public ConnectingScreen()
     {
         LatticeXaml.Load(this);
 
+        IndicatorSlot.AddChild(_indicator);
+
         CancelButton.OnPressed += () => OnCancel?.Invoke();
         RetryButton.OnPressed += () => OnRetry?.Invoke();
-        ReconnectButton.OnPressed += () => OnRetry?.Invoke();
         BackButton.OnPressed += () => OnCancel?.Invoke();
-        DisconnectedBackButton.OnPressed += () => OnCancel?.Invoke();
     }
 
     public event Action? OnCancel;
@@ -38,53 +37,49 @@ public sealed partial class ConnectingScreen : Control
 
     public void ShowConnecting(string address)
     {
-        ConnectingLabel.Text = $"Connecting to {address}...";
+        AddressLabel.Text = address;
         SetPage(ConnectingPage.Connecting);
     }
 
     public void ShowFailure(string? reason, bool wasConnected)
     {
-        string text = string.IsNullOrWhiteSpace(reason) ? "Connection failed." : reason;
-        if (wasConnected)
-        {
-            DisconnectReason.Text = text;
-            SetPage(ConnectingPage.Disconnected);
-        }
-        else
-        {
-            ConnectFailReason.Text = text;
-            SetPage(ConnectingPage.ConnectFailed);
-        }
+        StatusLabel.Text = string.IsNullOrWhiteSpace(reason) ? "Connection failed." : reason;
+        SetPage(wasConnected ? ConnectingPage.Disconnected : ConnectingPage.ConnectFailed);
     }
 
     private void SetPage(ConnectingPage page)
     {
-        ConnectingStatus.Visible = page == ConnectingPage.Connecting;
-        ConnectFail.Visible = page == ConnectingPage.ConnectFailed;
-        Disconnected.Visible = page == ConnectingPage.Disconnected;
+        bool searching = page == ConnectingPage.Connecting;
+
+        _indicator.State = searching ? LinkState.Searching : LinkState.Lost;
+        SearchingButtons.Visible = searching;
+        LostButtons.Visible = !searching;
+
+        TitleLabel.Text = page switch
+        {
+            ConnectingPage.Connecting => "ESTABLISHING LINK",
+            ConnectingPage.ConnectFailed => "LINK FAILED",
+            _ => "LINK LOST",
+        };
     }
 
     public override void FrameUpdate(float dt)
     {
         base.FrameUpdate(dt);
-        _phase += dt * 6f;
 
-        if (ConnectingStatus.Visible)
+        if (SearchingButtons.Visible)
         {
             _dots += dt;
             int count = 1 + ((int)(_dots * 2f) % 3);
-            ConnectStatus.Text = "Establishing connection" + new string('.', count);
+            StatusLabel.Text = "Establishing connection" + new string('.', count);
         }
     }
 
-    public override void Draw(PrimitiveBatch prims, TextBatch text)
-    {
-        if (!Visible)
-        {
-            return;
-        }
+    public override Vector2 Measure() => Root.Measure();
 
-        MenuBackground.Draw(prims, Bounds, _phase);
-        base.Draw(prims, text);
+    public override void Arrange(UiRect rect)
+    {
+        Bounds = rect;
+        Root.Arrange(rect);
     }
 }

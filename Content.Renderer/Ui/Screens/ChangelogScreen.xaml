@@ -1,16 +1,4 @@
 <!-- ReSharper disable All -->
 <Control xmlns="clr-namespace:Lattice.Renderer.Ui.Controls;assembly=Lattice.Renderer">
-
-  <BoxContainer Anchor="Center" Orientation="Vertical" DrawBackground="false" Separation="12">
-
-    <Label Text="CHANGELOG" FontSize="24" Color="#73D9FF" />
-
-    <PanelContainer>
-      <ScrollList Name="List" MaxHeight="460" Padding="16" Separation="4" />
-    </PanelContainer>
-
-    <Button Name="BackButton" Text="BACK" FontSize="15" MinWidth="150" Negative="true" />
-
-  </BoxContainer>
-
+  <ScrollList Name="List" MaxHeight="440" Padding="4" Separation="4" />
 </Control>

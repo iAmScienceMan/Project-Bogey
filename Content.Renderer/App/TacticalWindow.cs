@@ -17,6 +17,7 @@ using Content.Shared;
 using Content.Shared.Commands;
 using Lattice.Shared.Configuration;
 using Content.Shared.Configuration;
+using Content.Shared.Net;
 using Lattice.Shared.Console;
 using Content.Shared.Tracks;
 using Silk.NET.Input;
@@ -25,6 +26,7 @@ using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
 using Button = Lattice.Renderer.Ui.Controls.Button;
 using HueSlider = Content.Renderer.Ui.Controls.HueSlider;
+using UiWindow = Lattice.Renderer.Ui.Controls.Window;
 
 namespace Content.Renderer.App;
 
@@ -68,6 +70,16 @@ public sealed class TacticalWindow : IDisposable, IAppControl
     private ConnectingScreen _connectingScreen = null!;
     private LobbyScreen _lobbyScreen = null!;
 
+    private readonly WindowHost _windows = new();
+    private readonly MenuBackdrop _backdrop = new();
+    private readonly HubClient _hubClient;
+    private UiWindow _changelogWindow = null!;
+    private UiWindow _optionsWindow = null!;
+    private UiWindow _connectWindow = null!;
+    private UiWindow _connectingWindow = null!;
+    private Screen _syncedScreen = (Screen)(-1);
+    private Vector2 _viewport;
+
     private IGameSession? _session;
     private TacticalMapRenderer? _map;
     private Camera2D? _camera;
@@ -77,7 +89,6 @@ public sealed class TacticalWindow : IDisposable, IAppControl
     private readonly GroundTruthOverlayView _groundTruth = new();
 
     private Screen _screen = Screen.MainMenu;
-    private Screen _optionsReturn = Screen.MainMenu;
     private string? _pendingHost;
     private int _pendingPort;
     private bool _wasConnected;
@@ -107,6 +118,7 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         _changelog = changelog;
         _sessionFactory = sessionFactory;
         _prototypeIds = prototypeIds;
+        _hubClient = new HubClient(cfg.GetCVar(CCVars.HubUrl));
     }
 
     public void Run()
@@ -123,7 +135,7 @@ public sealed class TacticalWindow : IDisposable, IAppControl
                 new APIVersion(3, 3)),
         };
 
-        _window = Window.Create(windowOptions);
+        _window = Silk.NET.Windowing.Window.Create(windowOptions);
         _window.Load += OnLoad;
         _window.Render += OnRender;
         _window.FramebufferResize += OnFramebufferResize;
@@ -158,24 +170,32 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         _mainMenu.OnConnect += (host, port) => _console.RunCommand(
             string.Create(CultureInfo.InvariantCulture, $"connect {host}:{port}"));
         _mainMenu.OnChangelog += ShowChangelog;
-        _mainMenu.OnOptions += () => ShowOptions(Screen.MainMenu);
+        _mainMenu.OnOptions += ShowOptions;
         _mainMenu.OnQuit += () => _window?.Close();
+        _mainMenu.OnRefresh += RefreshServers;
+        RefreshServers();
+        _connectWindow = new UiWindow { Title = "PROJECT BOGEY", MinWidth = 360f, Closable = false };
+        _connectWindow.SetContent(_mainMenu);
 
         _optionsScreen = new OptionsScreen(_cfg);
-        _optionsScreen.OnBack += CloseOptions;
+        _optionsWindow = new UiWindow { Title = "OPTIONS", MinWidth = 380f };
+        _optionsWindow.SetContent(_optionsScreen);
 
         _changelogScreen = new ChangelogScreen();
-        _changelogScreen.OnBack += ShowMainMenu;
+        _changelogWindow = new UiWindow { Title = "CHANGELOG", MinWidth = 520f };
+        _changelogWindow.SetContent(_changelogScreen);
 
         _connectingScreen = new ConnectingScreen();
         _connectingScreen.OnCancel += LeaveServer;
         _connectingScreen.OnRetry += RetryConnect;
+        _connectingWindow = new UiWindow { Title = "CONNECTION", MinWidth = 340f, Closable = false };
+        _connectingWindow.SetContent(_connectingScreen);
 
         _lobbyScreen = new LobbyScreen();
         _lobbyScreen.OnReadyToggle += ready => _session?.SetReady(ready);
         _lobbyScreen.OnJoin += () => _session?.JoinGame();
         _lobbyScreen.OnLeave += () => _console.RunCommand("disconnect");
-        _lobbyScreen.OnOptions += () => ShowOptions(Screen.Lobby);
+        _lobbyScreen.OnOptions += ShowOptions;
         _lobbyScreen.OnApplyColor += ApplyColor;
 
         _cfg.OnValueChanged(CVars.RenderVsync, ApplyVsync);
@@ -201,6 +221,7 @@ public sealed class TacticalWindow : IDisposable, IAppControl
     private void OnRender(double deltaSeconds)
     {
         Vector2 viewport = LogicalSize();
+        _viewport = viewport;
         TextBatch.PixelScale = Framebuffer().X / viewport.X;
 
         _gl.Clear((uint)ClearBufferMask.ColorBufferBit);
@@ -299,8 +320,21 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         _hud.Draw(_prims, _text);
     }
 
+    private void RefreshServers()
+    {
+        _hubClient.Refresh();
+        _mainMenu.SetServers(Array.Empty<ServerListing>());
+    }
+
     private void RenderMenu(Vector2 viewport, float dt)
     {
+        SyncWindows();
+
+        if (_screen == Screen.MainMenu && _hubClient.Poll(out IReadOnlyList<ServerListing> servers))
+        {
+            _mainMenu.SetServers(servers);
+        }
+
         if (_screen == Screen.Lobby)
         {
             _lobbyScreen.Update(_session?.Lobby, _session?.Username ?? string.Empty);
@@ -312,17 +346,56 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         screen.FrameUpdate(dt);
         screen.Arrange(new UiRect(0f, 0f, viewport.X, viewport.Y));
         screen.Draw(_prims, _text);
+
+        if (MenuWindowsScreen)
+        {
+            SetLayer(RenderLayer.Windows);
+            _windows.FrameUpdate(dt);
+            _windows.Arrange(new UiRect(0f, 0f, viewport.X, viewport.Y));
+            _windows.Draw(_prims, _text);
+        }
     }
 
     private Control ActiveRoot => _screen switch
     {
-        Screen.Options => _optionsScreen,
-        Screen.Changelog => _changelogScreen,
-        Screen.Connecting => _connectingScreen,
+        Screen.Connecting => _backdrop,
         Screen.Lobby => _lobbyScreen,
-        Screen.MainMenu => _mainMenu,
+        Screen.MainMenu => _backdrop,
         _ => _hud!,
     };
+
+    private bool MenuWindowsScreen => _screen != Screen.Tactical;
+
+    private void SyncWindows()
+    {
+        if (_screen == _syncedScreen)
+        {
+            return;
+        }
+
+        _syncedScreen = _screen;
+
+        _windows.Close(_connectWindow);
+        _windows.Close(_connectingWindow);
+        _windows.Close(_optionsWindow);
+        _windows.Close(_changelogWindow);
+
+        if (_screen == Screen.MainMenu)
+        {
+            OpenCentered(_connectWindow);
+        }
+        else if (_screen == Screen.Connecting)
+        {
+            OpenCentered(_connectingWindow);
+        }
+    }
+
+    private void OpenCentered(UiWindow window)
+    {
+        Vector2 size = window.Measure();
+        window.Position = (_viewport - size) * 0.5f;
+        _windows.Open(window);
+    }
 
     private void SetLayer(RenderLayer layer)
     {
@@ -420,18 +493,15 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         _screen = Screen.Connecting;
     }
 
-    private void ShowOptions(Screen returnTo)
+    private void ShowOptions()
     {
-        _optionsReturn = returnTo;
         _optionsScreen.Refresh();
-        ClearInteraction();
-        _screen = Screen.Options;
+        OpenCentered(_optionsWindow);
     }
 
     private void CloseOptions()
     {
-        ClearInteraction();
-        _screen = _optionsReturn;
+        _windows.Close(_optionsWindow);
     }
 
     private void ShowChangelog()
@@ -439,14 +509,14 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         _changelogScreen.Populate(_changelog);
         _changelog.MarkAllRead();
         _mainMenu.RefreshChangelogButton();
-        ClearInteraction();
-        _screen = Screen.Changelog;
+        OpenCentered(_changelogWindow);
     }
 
     private void ShowMainMenu()
     {
         ClearInteraction();
         _screen = Screen.MainMenu;
+        RefreshServers();
     }
 
     private void LeaveServer()
@@ -472,14 +542,20 @@ public sealed class TacticalWindow : IDisposable, IAppControl
 
     private void MenuEscape()
     {
+        if (_windows.IsOpen(_optionsWindow))
+        {
+            CloseOptions();
+            return;
+        }
+
+        if (_windows.IsOpen(_changelogWindow))
+        {
+            _windows.Close(_changelogWindow);
+            return;
+        }
+
         switch (_screen)
         {
-            case Screen.Options:
-                CloseOptions();
-                break;
-            case Screen.Changelog:
-                ShowMainMenu();
-                break;
             case Screen.Connecting:
                 LeaveServer();
                 break;
@@ -496,6 +572,7 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         _focused?.Blur();
         _focused = null;
         _draggedSlider = null;
+        _windows.EndDrag();
 
         if (_hoveredButton is not null)
         {
@@ -583,6 +660,34 @@ public sealed class TacticalWindow : IDisposable, IAppControl
     private void MenuMouseDown(Vector2 px)
     {
         _uiCaptured = true;
+
+        if (MenuWindowsScreen && _windows.HasWindows && _windows.Contains(px))
+        {
+            Control? whit = _windows.MouseDown(px);
+
+            LineEdit? windowFocus = whit as LineEdit;
+            if (!ReferenceEquals(windowFocus, _focused))
+            {
+                _focused?.Blur();
+                _focused = windowFocus;
+                _focused?.Focus();
+            }
+
+            if (whit is HueSlider windowSlider)
+            {
+                _draggedSlider = windowSlider;
+                windowSlider.SetFromPosition(px);
+            }
+
+            if (whit is Button windowButton)
+            {
+                _pressedButton = windowButton;
+                windowButton.IsPressed = true;
+            }
+
+            return;
+        }
+
         Control? hit = ActiveRoot.HitTestOpaque(px);
 
         LineEdit? newFocus = hit as LineEdit;
@@ -670,11 +775,13 @@ public sealed class TacticalWindow : IDisposable, IAppControl
     private void MenuMouseUp(Vector2 px)
     {
         _draggedSlider = null;
+        _windows.EndDrag();
 
         if (_pressedButton is not null)
         {
             _pressedButton.IsPressed = false;
-            if (ReferenceEquals(ActiveRoot.HitTestOpaque(px), _pressedButton))
+            Button? target = (MenuWindowsScreen ? _windows.HitButton(px) : null) ?? ActiveRoot.HitTest(px);
+            if (ReferenceEquals(target, _pressedButton))
             {
                 _pressedButton.Press();
             }
@@ -689,6 +796,11 @@ public sealed class TacticalWindow : IDisposable, IAppControl
     {
         Vector2 px = ToLogical(position);
         UpdateHover(px);
+
+        if (_windows.IsDragging)
+        {
+            _windows.UpdateDrag(px);
+        }
 
         if (_draggedSlider is not null)
         {
@@ -724,7 +836,8 @@ public sealed class TacticalWindow : IDisposable, IAppControl
             return;
         }
 
-        if (_screen == Screen.Changelog)
+        if (_screen == Screen.MainMenu && _windows.IsOpen(_changelogWindow)
+            && _changelogWindow.Bounds.Contains(ToLogical(mouse.Position)))
         {
             _changelogScreen.HandleScroll(wheel.Y);
             return;
@@ -747,7 +860,9 @@ public sealed class TacticalWindow : IDisposable, IAppControl
 
     private void UpdateHover(Vector2 px)
     {
-        Button? over = ActiveRoot.HitTest(px);
+        Button? over = MenuWindowsScreen && _windows.HasWindows && _windows.Contains(px)
+            ? _windows.HitButton(px)
+            : ActiveRoot.HitTest(px);
         if (!ReferenceEquals(_hoveredButton, over))
         {
             if (_hoveredButton is not null)
@@ -796,22 +911,17 @@ public sealed class TacticalWindow : IDisposable, IAppControl
 
         switch (key)
         {
-            case Key.Space:
-                _console.RunCommand(_session!.Speed == 0 ? "speed 1" : "speed 0");
-                break;
-            case Key.Number1:
-            case Key.Keypad1:
-                _console.RunCommand("speed 1");
-                break;
-            case Key.Number2:
-            case Key.Keypad2:
-                _console.RunCommand("speed 10");
+            case Key.B:
+                _groundTruth.SetVisible(!_groundTruth.IsVisible);
                 break;
             case Key.C:
                 Recenter();
                 break;
             case Key.G:
                 _console.RunCommand("declutter");
+                break;
+            case Key.V:
+                _map?.ToggleSeekers();
                 break;
             case Key.Escape:
                 if (_selectedUnit is not null || _selectedTarget is not null)
@@ -968,6 +1078,7 @@ public sealed class TacticalWindow : IDisposable, IAppControl
     private void OnClosing()
     {
         _session?.Disconnect();
+        _hubClient.Dispose();
         _prims.Dispose();
         _sprites.Dispose();
         _entitySprites.Dispose();

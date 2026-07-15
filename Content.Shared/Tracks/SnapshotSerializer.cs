@@ -64,6 +64,13 @@ public static class SnapshotSerializer
             writer.Write(munition.HeadingRadians);
             writer.Write((int)munition.Seeker);
             writer.Write(munition.Locked);
+            writer.Write(munition.FovDegrees);
+            writer.Write(munition.AcquisitionRangeKm);
+            WriteVector(writer, munition.Datum);
+            writer.Write(munition.DatumPassed);
+            writer.Write(munition.Ballistic);
+            writer.Write(munition.Finishing);
+            WriteNullableVector(writer, munition.TargetPosition);
             WriteString(writer, munition.Sprite);
             writer.Write(munition.SpriteScale);
             writer.Write(munition.SpriteVisible);
@@ -157,6 +164,13 @@ public static class SnapshotSerializer
                 HeadingRadians = reader.ReadSingle(),
                 Seeker = (SeekerType)reader.ReadInt32(),
                 Locked = reader.ReadBoolean(),
+                FovDegrees = reader.ReadSingle(),
+                AcquisitionRangeKm = reader.ReadSingle(),
+                Datum = ReadVector(reader),
+                DatumPassed = reader.ReadBoolean(),
+                Ballistic = reader.ReadBoolean(),
+                Finishing = reader.ReadBoolean(),
+                TargetPosition = ReadNullableVector(reader),
                 Sprite = ReadString(reader),
                 SpriteScale = reader.ReadSingle(),
                 SpriteVisible = reader.ReadBoolean(),
@@ -181,6 +195,18 @@ public static class SnapshotSerializer
 
     private static Vector2 ReadVector(BinaryReader reader)
         => new(reader.ReadSingle(), reader.ReadSingle());
+
+    private static void WriteNullableVector(BinaryWriter writer, Vector2? value)
+    {
+        writer.Write(value.HasValue);
+        if (value.HasValue)
+        {
+            WriteVector(writer, value.Value);
+        }
+    }
+
+    private static Vector2? ReadNullableVector(BinaryReader reader)
+        => reader.ReadBoolean() ? ReadVector(reader) : null;
 
     private static void WriteString(BinaryWriter writer, string? value)
     {

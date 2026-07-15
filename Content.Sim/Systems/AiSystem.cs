@@ -24,9 +24,10 @@ public sealed class AiSystem : EntitySystem
             return;
         }
 
-        foreach (int entity in _entities.Query<Ai, Transform>())
+        EntityQueryEnumerator<Ai, Transform> query = _entities.AllEntityQuery<Ai, Transform>();
+        while (query.MoveNext(out EntityUid entity, out Ai ai, out Transform transform))
         {
-            if (_entities.GetComponent<Ai>(entity).Behavior != AiBehavior.Aggressive)
+            if (ai.Behavior != AiBehavior.Aggressive)
             {
                 continue;
             }
@@ -37,22 +38,30 @@ public sealed class AiSystem : EntitySystem
             }
 
             Faction observer = _entities.GetComponent<Faction>(entity);
-            Vector2 position = _entities.GetComponent<Transform>(entity).Position;
+            Vector2 position = transform.Position;
 
-            if (TryNearestContact(observer, position, out Vector2 destination))
+            if (TryNearestContact(observer, position, out Vector2 contact))
             {
-                propulsion.Waypoint = destination;
+                propulsion.Waypoint = StandoffPoint(position, contact, ai.StandoffKm);
             }
         }
+    }
+
+    private static Vector2 StandoffPoint(Vector2 self, Vector2 contact, float standoffKm)
+    {
+        Vector2 away = self - contact;
+        float distance = away.Length();
+        Vector2 direction = distance > 1e-3f ? away / distance : new Vector2(1f, 0f);
+        return contact + (direction * standoffKm);
     }
 
     private bool TryNearestContact(Faction observer, Vector2 from, out Vector2 destination)
     {
         destination = Vector2.Zero;
-        int best = -1;
+        EntityUid best = EntityUid.Invalid;
         float bestDistance = float.MaxValue;
 
-        foreach (KeyValuePair<int, Track> entry in _tracking.EntriesFor(observer.EffectiveId))
+        foreach (KeyValuePair<EntityUid, Track> entry in _tracking.EntriesFor(observer.EffectiveId))
         {
             if (!_entities.TryGetComponent(entry.Key, out Faction faction) || !Factions.AreHostile(observer, faction))
             {
@@ -68,6 +77,6 @@ public sealed class AiSystem : EntitySystem
             }
         }
 
-        return best >= 0;
+        return best.Valid;
     }
 }

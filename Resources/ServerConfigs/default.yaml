@@ -2,9 +2,18 @@ id: default
 name: Default Skirmish
 scenario: default
 seed: 1337
-tickRate: 5
+tickRate: 15
 port: 8712
+maxPlayers: 8
 
 # Usernames that get admin on connect. The server console can also grant
 # admin at runtime with `admin <username>`.
 admins: []
+
+# Advertise this server to the hub so it appears in the client's browser.
+# Flip advertise to true, point url at your hub, and set address to the
+# host:port clients actually connect to (your public ip for real hosting).
+hub:
+  advertise: false
+  url: http://localhost:8080/
+  address: 127.0.0.1:8712

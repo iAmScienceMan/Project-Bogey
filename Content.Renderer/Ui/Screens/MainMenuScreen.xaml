@@ -1,34 +1,63 @@
 <!-- ReSharper disable All -->
 <Control xmlns="clr-namespace:Lattice.Renderer.Ui.Controls;assembly=Lattice.Renderer">
 
-  <BoxContainer Anchor="Center" Orientation="Vertical" DrawBackground="false" Separation="16">
+  <BoxContainer Name="Root" Orientation="Vertical" DrawBackground="false" Separation="12" HorizontalExpand="true">
 
-    <Label Name="TitleLabel" Text="PROJECT BOGEY" FontSize="40" Color="#73D9FF" />
-    <Label Name="SubtitleLabel" Text="fog-of-war tactical sim" FontSize="13" Color="#9EAECC" />
+    <BoxContainer Orientation="Horizontal" DrawBackground="false" Separation="10" HorizontalExpand="true">
+      <Label Text="SERVERS" FontSize="15" Color="#F0F5F9" />
+      <Label Text="" HorizontalExpand="true" />
+      <Label Text="NAME" FontSize="13" Color="#8B98A1" />
+      <LineEdit Name="UsernameEdit" MinWidth="180" FontSize="14" PlaceHolder="Bogeyman" />
+    </BoxContainer>
 
-    <PanelContainer>
-      <BoxContainer Orientation="Vertical" DrawBackground="false" Separation="8" Padding="18">
+    <Rule Color="#C9D6DF" Thickness="2" />
 
-        <GridContainer Columns="2" Separation="10" HorizontalExpand="true">
-          <Label Text="USERNAME" FontSize="14" Color="#CCDBEB" />
-          <LineEdit Name="UsernameEdit" MinWidth="140" FontSize="14" PlaceHolder="Bogeyman" HorizontalExpand="true" />
-          <Label Text="SERVER ADDRESS" FontSize="14" Color="#CCDBEB" />
-          <LineEdit Name="AddressEdit" MinWidth="140" FontSize="14" PlaceHolder="ip or ip:port" HorizontalExpand="true" />
-        </GridContainer>
+    <BoxContainer Orientation="Horizontal" DrawBackground="false" Separation="12" HorizontalExpand="true">
 
-        <Label Name="ErrorLabel" FontSize="12" Color="#F06B62" Text="" />
+      <PanelContainer>
+        <BoxContainer Orientation="Vertical" DrawBackground="false" Separation="8" Padding="12">
+          <Label Text="FILTERS" FontSize="12" Color="#8B98A1" />
+          <LineEdit Name="SearchEdit" MinWidth="160" FontSize="13" PlaceHolder="search" />
+          <Button Name="PlayersFilterButton" Text="HAS PLAYERS" FontSize="13" MinWidth="160" />
+          <Button Name="NotFullFilterButton" Text="NOT FULL" FontSize="13" MinWidth="160" />
+          <Rule Color="#454F55" Thickness="1" />
+          <Label Text="SORT" FontSize="12" Color="#8B98A1" />
+          <BoxContainer Orientation="Horizontal" DrawBackground="false" Separation="8">
+            <Button Name="SortNameButton" Text="NAME" FontSize="13" MinWidth="76" HorizontalExpand="true" />
+            <Button Name="SortPlayersButton" Text="PLAYERS" FontSize="13" MinWidth="76" HorizontalExpand="true" />
+          </BoxContainer>
+          <Rule Color="#454F55" Thickness="1" />
+          <Label Text="DIRECT CONNECT" FontSize="12" Color="#8B98A1" />
+          <LineEdit Name="AddressEdit" MinWidth="160" FontSize="13" PlaceHolder="ip or ip:port" />
+          <Button Name="ConnectButton" Text="CONNECT" FontSize="13" MinWidth="160" />
+          <Label Name="ErrorLabel" FontSize="11" Color="#C79AA2" Text="" />
+        </BoxContainer>
+      </PanelContainer>
 
-        <Button Name="ConnectButton" Text="CONNECT" FontSize="16" MinWidth="300" HorizontalExpand="true" />
-        <Button Name="ChangelogButton" Text="CHANGELOG" FontSize="16" MinWidth="300" HorizontalExpand="true" />
-        <Button Name="OptionsButton" Text="OPTIONS" FontSize="16" MinWidth="300" HorizontalExpand="true" />
-        <Button Name="QuitButton" Text="QUIT" FontSize="16" MinWidth="300" Negative="true" HorizontalExpand="true" />
-
+      <BoxContainer Orientation="Vertical" DrawBackground="false" Separation="6" HorizontalExpand="true">
+        <BoxContainer Orientation="Horizontal" DrawBackground="false" Separation="10" HorizontalExpand="true">
+          <Label Text="NAME" FontSize="12" Color="#8B98A1" HorizontalExpand="true" />
+          <Label Text="PLAYERS" FontSize="12" Color="#8B98A1" />
+        </BoxContainer>
+        <Rule Color="#454F55" Thickness="1" />
+        <ScrollList Name="ServerList" MaxHeight="300" Separation="2" HorizontalExpand="true" />
+        <Label Name="StatusLabel" FontSize="11" Color="#6E7A82" Text="No servers found." />
       </BoxContainer>
-    </PanelContainer>
+
+    </BoxContainer>
+
+    <Rule Color="#454F55" Thickness="1" />
+
+    <BoxContainer Orientation="Horizontal" DrawBackground="false" Separation="10" HorizontalExpand="true">
+      <Label Name="VersionLabel" FontSize="11" Color="#6E7A82" Text="build 0.1.0-dev" />
+      <Label Text="" HorizontalExpand="true" />
+      <Button Name="RefreshButton" Text="REFRESH" FontSize="13" MinWidth="110" />
+      <Button Name="ChangelogButton" Text="CHANGELOG" FontSize="13" MinWidth="130" />
+      <Button Name="OptionsButton" Text="OPTIONS" FontSize="13" MinWidth="110" />
+      <Button Name="QuitButton" Text="QUIT" FontSize="13" MinWidth="90" Negative="true" />
+      <Button Name="JoinButton" Text="JOIN" FontSize="14" MinWidth="120" />
+    </BoxContainer>
 
   </BoxContainer>
-
-  <Label Name="VersionLabel" Anchor="BottomRight" Margin="0 0 12 10" FontSize="11" Color="#7788AA"
-         Text="build 0.1.0-dev" />
 
 </Control>

@@ -25,6 +25,7 @@ public sealed class GameTicker
 {
     private const int MaxUsernameLength = 24;
     private const double LobbyBroadcastInterval = 1.0;
+    private const double HubAdvertiseInterval = 30.0;
     private const int MaxSpeed = 100;
 
     private enum RunLevel
@@ -68,6 +69,10 @@ public sealed class GameTicker
     private readonly ConsoleCommandRegistry _serverConsole;
     private readonly StdoutConsoleShell _stdoutShell = new();
 
+    private readonly HubAdvertiser? _advertiser;
+    private readonly string _advertiseAddress = string.Empty;
+    private double _lastAdvertise = double.NegativeInfinity;
+
     private RunLevel _level = RunLevel.Lobby;
     private SimRuntime? _sim;
     private double _countdownRemaining;
@@ -107,6 +112,19 @@ public sealed class GameTicker
         _server.ApprovalHandler = HandleApproval;
         _server.PeerConnected += HandlePeerConnected;
         _server.PeerDisconnected += HandlePeerDisconnected;
+
+        if (config.Hub is { Advertise: true } hub)
+        {
+            if (hub.Url.Length == 0 || hub.Address.Length == 0)
+            {
+                _log.Warning("Server config enables hub advertising but hub url or address is empty; not advertising.");
+            }
+            else
+            {
+                _advertiser = new HubAdvertiser(hub.Url);
+                _advertiseAddress = hub.Address;
+            }
+        }
     }
 
     public void EnqueueConsoleCommand(string commandLine) => _consoleCommands.Enqueue(commandLine);
@@ -136,6 +154,8 @@ public sealed class GameTicker
             {
                 _serverConsole.Execute(commandLine, _stdoutShell);
             }
+
+            AdvertiseToHub(clock.Elapsed.TotalSeconds);
 
             double now = clock.Elapsed.TotalSeconds;
             double dt = now - last;
@@ -185,6 +205,25 @@ public sealed class GameTicker
 
             Thread.Sleep(5);
         }
+
+        _advertiser?.Dispose();
+    }
+
+    private void AdvertiseToHub(double elapsed)
+    {
+        if (_advertiser is null || elapsed - _lastAdvertise < HubAdvertiseInterval)
+        {
+            return;
+        }
+
+        _lastAdvertise = elapsed;
+        _advertiser.Advertise(new ServerListing
+        {
+            Address = _advertiseAddress,
+            Name = _config.Name ?? _config.Id,
+            Players = _server.ConnectionCount,
+            MaxPlayers = _config.MaxPlayers,
+        });
     }
 
     private void AdvanceCountdown(double dt)
@@ -200,30 +239,18 @@ public sealed class GameTicker
             return;
         }
 
-        bool anyoneReady = false;
-        foreach (PlayerRecord player in _players.Values)
-        {
-            if (player.Connected && player.Ready)
-            {
-                anyoneReady = true;
-                break;
-            }
-        }
-
-        if (anyoneReady)
-        {
-            StartRound();
-        }
-        else
-        {
-            _countdownRemaining = _cfg.GetCVar(CCVars.GameLobbyDuration);
-            _lobbyDirty = true;
-        }
+        StartRound();
     }
 
     private void StartRound()
     {
-        _sim = new SimRuntime(_scenario, _prototypes, _config.Seed, _config.Sim ?? SimConfigFromCVars(), _logManager);
+        _sim = new SimRuntime(
+            _scenario,
+            _prototypes,
+            _config.Seed,
+            _config.Sim ?? SimConfigFromCVars(),
+            _logManager,
+            1.0 / _config.TickRate);
         _level = RunLevel.InRound;
         _timerPaused = false;
         _log.Info($"Round started: scenario '{_scenario.Id}', seed {_config.Seed}.");

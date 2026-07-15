@@ -49,16 +49,17 @@ public sealed class FireControlSystem : EntitySystem
         TickCooldowns();
         ReleaseStaleLocks();
 
-        Dictionary<int, int> committedByTarget = CountCommittedMunitions();
+        Dictionary<EntityUid, int> committedByTarget = CountCommittedMunitions();
         ProcessManualOrders(committedByTarget);
         ProcessPosture(committedByTarget);
     }
 
     private void TickCooldowns()
     {
-        foreach (int entity in _entities.Query<Loadout>())
+        EntityQueryEnumerator<Loadout> query = _entities.AllEntityQuery<Loadout>();
+        while (query.MoveNext(out _, out Loadout loadout))
         {
-            foreach (WeaponMount mount in _entities.GetComponent<Loadout>(entity).Mounts)
+            foreach (WeaponMount mount in loadout.Mounts)
             {
                 if (mount.TicksUntilReady > 0)
                 {
@@ -68,7 +69,7 @@ public sealed class FireControlSystem : EntitySystem
         }
     }
 
-    private void ProcessManualOrders(Dictionary<int, int> committedByTarget)
+    private void ProcessManualOrders(Dictionary<EntityUid, int> committedByTarget)
     {
         if (_orders.Count == 0)
         {
@@ -88,25 +89,25 @@ public sealed class FireControlSystem : EntitySystem
         _orders.AddRange(surviving);
     }
 
-    private bool TryAdvanceOrder(PendingOrder order, Dictionary<int, int> committedByTarget, out PendingOrder remainder)
+    private bool TryAdvanceOrder(PendingOrder order, Dictionary<EntityUid, int> committedByTarget, out PendingOrder remainder)
     {
         remainder = order;
 
-        int shooter = order.Shooter;
+        EntityUid shooter = order.Shooter;
         if (!_entities.HasComponent<Loadout>(shooter) || !_entities.HasComponent<Faction>(shooter))
         {
             return false;
         }
 
         Faction side = _entities.GetComponent<Faction>(shooter);
-        IReadOnlyDictionary<int, Track> picture = _tracking.EntriesFor(side.EffectiveId);
+        IReadOnlyDictionary<EntityUid, Track> picture = _tracking.EntriesFor(side.EffectiveId);
 
-        if (!TryResolveTrack(picture, order.TrackId, out int target, out Track track))
+        if (!TryResolveTrack(picture, order.TrackId, out EntityUid target, out Track track))
         {
             return false;
         }
 
-        if (!_entities.TryGetComponent(target, out Faction targetFaction) || !Factions.AreHostile(side, targetFaction))
+        if (_entities.TryGetComponent(target, out Faction targetFaction) && !Factions.AreHostile(side, targetFaction))
         {
             return false;
         }
@@ -142,35 +143,36 @@ public sealed class FireControlSystem : EntitySystem
 
     private void ReleaseStaleLocks()
     {
-        foreach (int entity in _entities.Query<WeaponControl>())
+        EntityQueryEnumerator<WeaponControl> query = _entities.AllEntityQuery<WeaponControl>();
+        while (query.MoveNext(out _, out WeaponControl control))
         {
-            WeaponControl control = _entities.GetComponent<WeaponControl>(entity);
-            if (control.LockedTarget >= 0 && !_entities.HasComponent<Transform>(control.LockedTarget))
+            if (control.LockedTarget.Valid && !_entities.HasComponent<Transform>(control.LockedTarget))
             {
-                control.LockedTarget = -1;
+                control.LockedTarget = EntityUid.Invalid;
             }
         }
     }
 
-    private void AutoLock(int shooter, int target)
+    private void AutoLock(EntityUid shooter, EntityUid target)
     {
-        if (_entities.TryGetComponent(shooter, out WeaponControl control) && control.LockedTarget < 0)
+        if (_entities.TryGetComponent(shooter, out WeaponControl control) && !control.LockedTarget.Valid)
         {
             control.LockedTarget = target;
             Log.Debug($"Entity {shooter} radar locked entity {target}.");
         }
     }
 
-    private void ProcessPosture(Dictionary<int, int> committedByTarget)
+    private void ProcessPosture(Dictionary<EntityUid, int> committedByTarget)
     {
-        foreach (int shooter in new List<int>(_entities.Query<Loadout, WeaponControl>()))
+        EntityQueryEnumerator<Loadout, WeaponControl> query = _entities.AllEntityQuery<Loadout, WeaponControl>();
+        while (query.MoveNext(out EntityUid shooter, out Loadout loadout, out WeaponControl control))
         {
             if (!_config.AiEnabled && _entities.HasComponent<Ai>(shooter))
             {
                 continue;
             }
 
-            WeaponPosture posture = _entities.GetComponent<WeaponControl>(shooter).Posture;
+            WeaponPosture posture = control.Posture;
             if (posture == WeaponPosture.Hold)
             {
                 continue;
@@ -178,9 +180,11 @@ public sealed class FireControlSystem : EntitySystem
 
             Faction side = _entities.GetComponent<Faction>(shooter);
             Vector2 origin = _entities.GetComponent<Transform>(shooter).Position;
-            IReadOnlyDictionary<int, Track> picture = _tracking.EntriesFor(side.EffectiveId);
+            IReadOnlyDictionary<EntityUid, Track> picture = _tracking.EntriesFor(side.EffectiveId);
+            bool shooterIsPlayer = _entities.HasComponent<PlayerControlled>(shooter);
+            bool allowUnknownDomain = _entities.HasComponent<Ai>(shooter);
 
-            foreach (WeaponMount mount in _entities.GetComponent<Loadout>(shooter).Mounts)
+            foreach (WeaponMount mount in loadout.Mounts)
             {
                 if (mount.TicksUntilReady > 0 || !HasAmmo(mount))
                 {
@@ -203,8 +207,9 @@ public sealed class FireControlSystem : EntitySystem
                     continue;
                 }
 
-                int target = SelectOffensiveTarget(side, origin, projectile, picture, committedByTarget);
-                if (target < 0)
+                EntityUid target = SelectOffensiveTarget(
+                    side, origin, projectile, picture, committedByTarget, shooterIsPlayer, allowUnknownDomain);
+                if (!target.Valid)
                 {
                     continue;
                 }
@@ -220,34 +225,49 @@ public sealed class FireControlSystem : EntitySystem
         }
     }
 
-    private Dictionary<int, int> CountCommittedMunitions()
+    private Dictionary<EntityUid, int> CountCommittedMunitions()
     {
-        Dictionary<int, int> committed = new();
-        foreach (int munition in _entities.Query<Projectile>())
+        Dictionary<EntityUid, int> committed = new();
+        EntityQueryEnumerator<Projectile> query = _entities.AllEntityQuery<Projectile>();
+        while (query.MoveNext(out _, out Projectile projectile))
         {
-            int target = _entities.GetComponent<Projectile>(munition).TargetEntity;
+            EntityUid target = projectile.TargetEntity;
             committed[target] = committed.GetValueOrDefault(target) + 1;
         }
 
         return committed;
     }
 
-    private int SelectOffensiveTarget(
+    private EntityUid SelectOffensiveTarget(
         Faction side,
         Vector2 origin,
         Projectile projectile,
-        IReadOnlyDictionary<int, Track> picture,
-        IReadOnlyDictionary<int, int> committedByTarget)
+        IReadOnlyDictionary<EntityUid, Track> picture,
+        IReadOnlyDictionary<EntityUid, int> committedByTarget,
+        bool shooterIsPlayer,
+        bool allowUnknownDomain)
     {
-        int best = -1;
+        EntityUid best = EntityUid.Invalid;
         float bestDistance = float.MaxValue;
 
-        foreach (KeyValuePair<int, Track> entry in picture)
+        foreach (KeyValuePair<EntityUid, Track> entry in picture)
         {
-            int truthEntity = entry.Key;
+            EntityUid truthEntity = entry.Key;
             Track track = entry.Value;
 
-            if (!projectile.TargetDomains.Contains(track.DomainGuess))
+            if (track.State is TrackState.Stale or TrackState.Dropped)
+            {
+                continue;
+            }
+
+            if (shooterIsPlayer && _entities.HasComponent<PlayerControlled>(truthEntity))
+            {
+                continue;
+            }
+
+            bool domainOk = projectile.TargetDomains.Contains(track.DomainGuess)
+                || (allowUnknownDomain && track.DomainGuess == ContactDomain.Unknown);
+            if (!domainOk)
             {
                 continue;
             }
@@ -279,18 +299,18 @@ public sealed class FireControlSystem : EntitySystem
     }
 
     private void ServicePointDefense(
-        int shooter,
+        EntityUid shooter,
         Faction side,
         Vector2 origin,
         WeaponMount mount,
-        IReadOnlyDictionary<int, Track> picture)
+        IReadOnlyDictionary<EntityUid, Track> picture)
     {
-        int threat = -1;
+        EntityUid threat = EntityUid.Invalid;
         float bestDistance = float.MaxValue;
 
-        foreach (KeyValuePair<int, Track> entry in picture)
+        foreach (KeyValuePair<EntityUid, Track> entry in picture)
         {
-            int truthEntity = entry.Key;
+            EntityUid truthEntity = entry.Key;
             if (!_entities.HasComponent<Projectile>(truthEntity))
             {
                 continue;
@@ -314,7 +334,7 @@ public sealed class FireControlSystem : EntitySystem
             }
         }
 
-        if (threat < 0)
+        if (!threat.Valid)
         {
             return;
         }
@@ -333,7 +353,7 @@ public sealed class FireControlSystem : EntitySystem
         }
     }
 
-    private bool Fire(int shooter, Faction side, Vector2 origin, int target, WeaponMount mount, Track track)
+    private bool Fire(EntityUid shooter, Faction side, Vector2 origin, EntityUid target, WeaponMount mount, Track track)
     {
         if (!_prototypes.Has(mount.ProjectilePrototype))
         {
@@ -341,7 +361,7 @@ public sealed class FireControlSystem : EntitySystem
             return false;
         }
 
-        int munitionEntity = _prototypes.SpawnEntity(_entities, mount.ProjectilePrototype);
+        EntityUid munitionEntity = _prototypes.SpawnEntity(_entities, mount.ProjectilePrototype);
         _bus.PublishDirected(munitionEntity, new ComponentInit());
 
         if (!_entities.TryGetComponent(munitionEntity, out Projectile munition))
@@ -381,7 +401,7 @@ public sealed class FireControlSystem : EntitySystem
             ? projectile
             : null;
 
-    private WeaponMount? FindOffensiveMount(int shooter, string weapon)
+    private WeaponMount? FindOffensiveMount(EntityUid shooter, string weapon)
     {
         foreach (WeaponMount mount in _entities.GetComponent<Loadout>(shooter).Mounts)
         {
@@ -395,9 +415,9 @@ public sealed class FireControlSystem : EntitySystem
         return null;
     }
 
-    private static bool TryResolveTrack(IReadOnlyDictionary<int, Track> picture, int trackId, out int truthEntity, out Track track)
+    private static bool TryResolveTrack(IReadOnlyDictionary<EntityUid, Track> picture, int trackId, out EntityUid truthEntity, out Track track)
     {
-        foreach (KeyValuePair<int, Track> entry in picture)
+        foreach (KeyValuePair<EntityUid, Track> entry in picture)
         {
             if (entry.Value.TrackId == trackId)
             {
@@ -407,7 +427,7 @@ public sealed class FireControlSystem : EntitySystem
             }
         }
 
-        truthEntity = -1;
+        truthEntity = EntityUid.Invalid;
         track = null!;
         return false;
     }
@@ -422,5 +442,5 @@ public sealed class FireControlSystem : EntitySystem
         }
     }
 
-    private readonly record struct PendingOrder(int Shooter, int TrackId, string Weapon, int Remaining);
+    private readonly record struct PendingOrder(EntityUid Shooter, int TrackId, string Weapon, int Remaining);
 }

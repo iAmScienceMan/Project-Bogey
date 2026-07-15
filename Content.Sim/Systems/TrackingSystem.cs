@@ -16,7 +16,7 @@ public sealed class TrackingSystem : EntitySystem
     [Dependency]
     private readonly SimConfig _config = null!;
 
-    private readonly Dictionary<string, Dictionary<int, Track>> _picturesByFaction = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Dictionary<EntityUid, Track>> _picturesByFaction = new(StringComparer.Ordinal);
     private int _nextTrackId;
 
     public override void Initialize()
@@ -27,15 +27,15 @@ public sealed class TrackingSystem : EntitySystem
 
     public IEnumerable<string> KnownFactions => _picturesByFaction.Keys;
 
-    public IReadOnlyDictionary<int, Track> EntriesFor(string faction) => Picture(faction);
+    public IReadOnlyDictionary<EntityUid, Track> EntriesFor(string faction) => Picture(faction);
 
-    public void Set(string faction, int truthEntityId, Track track) => Picture(faction)[truthEntityId] = track;
+    public void Set(string faction, EntityUid truthEntityId, Track track) => Picture(faction)[truthEntityId] = track;
 
     public IReadOnlyList<Track> TracksFor(string faction) => new List<Track>(Picture(faction).Values);
 
-    private void OnContactDetected(int truthEntityId, ContactDetectedEvent evt)
+    private void OnContactDetected(EntityUid truthEntityId, ContactDetectedEvent evt)
     {
-        Dictionary<int, Track> picture = Picture(evt.ObserverFaction);
+        Dictionary<EntityUid, Track> picture = Picture(evt.ObserverFaction);
         float gain = _config.ConfidenceGainPerHit * (0.5f + 0.5f * evt.DetectionStrength);
 
         if (picture.TryGetValue(truthEntityId, out Track? existing))
@@ -73,11 +73,11 @@ public sealed class TrackingSystem : EntitySystem
 
     private void OnTrackDropped(TrackDroppedEvent evt) => Picture(evt.ObserverFaction).Remove(evt.TruthEntityId);
 
-    private Dictionary<int, Track> Picture(string faction)
+    private Dictionary<EntityUid, Track> Picture(string faction)
     {
-        if (!_picturesByFaction.TryGetValue(faction, out Dictionary<int, Track>? picture))
+        if (!_picturesByFaction.TryGetValue(faction, out Dictionary<EntityUid, Track>? picture))
         {
-            picture = new Dictionary<int, Track>();
+            picture = new Dictionary<EntityUid, Track>();
             _picturesByFaction[faction] = picture;
         }
 

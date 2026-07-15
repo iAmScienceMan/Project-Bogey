@@ -11,17 +11,21 @@ public sealed class MovementSystem : EntitySystem
     [Dependency]
     private readonly SimConfig _config = null!;
 
+    [Dependency]
+    private readonly SimClock _clock = null!;
+
     public override void Update()
     {
-        foreach (int entity in _entities.Query<Transform>())
+        float dt = (float)_clock.Dt;
+        EntityQueryEnumerator<Transform> query = _entities.AllEntityQuery<Transform>();
+        while (query.MoveNext(out EntityUid entity, out Transform transform))
         {
             if (!_config.AiEnabled && _entities.HasComponent<Ai>(entity))
             {
                 continue;
             }
 
-            Transform transform = _entities.GetComponent<Transform>(entity);
-            transform.Position += transform.Velocity * (float)SimClock.SecondsPerTick;
+            transform.Position += transform.Velocity * dt;
         }
     }
 }

@@ -8,9 +8,9 @@ namespace Content.Shared.Components;
 [RegisterComponent]
 public sealed class Projectile : Component
 {
-    public int OwnerEntity { get; set; }
+    public EntityUid OwnerEntity { get; set; }
 
-    public int TargetEntity { get; set; }
+    public EntityUid TargetEntity { get; set; }
 
     public string ObserverFaction { get; set; } = string.Empty;
 
@@ -42,4 +42,12 @@ public sealed class Projectile : Component
     public Vector2 Datum { get; set; }
 
     public bool DatumPassed { get; set; }
+
+    public Vector2 LastTargetPosition { get; set; }
+
+    public bool HadLiveTarget { get; set; }
+
+    public bool Ballistic { get; set; }
+
+    public bool Finishing { get; set; }
 }

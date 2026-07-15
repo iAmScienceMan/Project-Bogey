@@ -70,16 +70,4 @@ public sealed class ChangelogScreenTests
 
         Assert.That(LabelTexts(screen), Has.Some.Contains("No changelog entries"));
     }
-
-    [Test]
-    public void Back_RaisesEvent()
-    {
-        ChangelogScreen screen = new();
-        bool back = false;
-        screen.OnBack += () => back = true;
-
-        screen.SelfAndDescendants().OfType<Button>().First(b => b.Text == "BACK").Press();
-
-        Assert.That(back, Is.True);
-    }
 }

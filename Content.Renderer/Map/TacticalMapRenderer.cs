@@ -6,6 +6,7 @@ using Lattice.Renderer.Gl;
 using Content.Renderer.RealTime;
 using Lattice.Renderer.Text;
 using Content.Shared;
+using Content.Shared.Components;
 using Content.Shared.Tracks;
 using Content.Shared.Presentation;
 
@@ -32,8 +33,20 @@ public sealed class TacticalMapRenderer
     private static readonly Rgba OrderColor = new(0.40f, 1.0f, 0.55f);
     private static readonly Rgba GlyphColor = new(0.97f, 0.97f, 0.97f);
 
+    private static readonly Rgba SeekerColor = new(0.55f, 0.90f, 1.0f);
+    private static readonly Rgba SeekerLockedColor = new(1.0f, 0.80f, 0.40f);
+    private static readonly Rgba SeekerLabelColor = new(0.85f, 0.93f, 1.0f);
+
     private readonly Dictionary<int, TrackVisual> _visuals = new();
     private readonly Dictionary<int, Track> _prevScratch = new();
+
+    private bool _showSeekers;
+
+    public bool ToggleSeekers()
+    {
+        _showSeekers = !_showSeekers;
+        return _showSeekers;
+    }
 
     public void Draw(
         ISimSession session,
@@ -90,7 +103,85 @@ public sealed class TacticalMapRenderer
         {
             Vector2 world = Interp.MunitionPosition(session, munition.Id, munition.Position);
             DrawMunition(prims, sprites, entitySprites, camera, munition, world);
+
+            if (_showSeekers)
+            {
+                DrawMunitionSeeker(prims, text, camera, munition, world);
+            }
         }
+    }
+
+    private static void DrawMunitionSeeker(PrimitiveBatch prims, TextBatch text, Camera2D camera, MunitionView munition, Vector2 world)
+    {
+        Rgba color = munition.Locked ? SeekerLockedColor : SeekerColor;
+        Vector2 screen = camera.WorldToScreen(world);
+
+        if (munition.AcquisitionRangeKm > 0f)
+        {
+            prims.Ring(screen, camera.KmToPixels(munition.AcquisitionRangeKm), color.WithAlpha(0.20f), 48);
+
+            if (munition.FovDegrees > 0f && munition.FovDegrees < 360f)
+            {
+                DrawSeekerCone(prims, camera, world, munition, color);
+            }
+        }
+
+        if (!munition.DatumPassed && !munition.Ballistic)
+        {
+            prims.Line(screen, camera.WorldToScreen(munition.Datum), color.WithAlpha(0.30f));
+        }
+
+        if (munition.Locked && munition.TargetPosition is { } targetPosition)
+        {
+            prims.Line(screen, camera.WorldToScreen(targetPosition), color);
+        }
+
+        text.Text(screen + new Vector2(7f, -14f), 10f, SeekerLabelColor, PhaseOf(munition));
+    }
+
+    private static void DrawSeekerCone(PrimitiveBatch prims, Camera2D camera, Vector2 world, MunitionView munition, Rgba color)
+    {
+        float half = munition.FovDegrees * 0.5f * (MathF.PI / 180f);
+        float acq = munition.AcquisitionRangeKm;
+        Rgba edge = color.WithAlpha(0.45f);
+
+        Vector2 Edge(float angle)
+            => camera.WorldToScreen(world + (new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * acq));
+
+        Vector2 apex = camera.WorldToScreen(world);
+        float start = munition.HeadingRadians - half;
+        Vector2 previous = Edge(start);
+        prims.Line(apex, previous, edge);
+
+        const int segments = 16;
+        for (int i = 1; i <= segments; i++)
+        {
+            Vector2 point = Edge(start + ((2f * half) * (i / (float)segments)));
+            prims.Line(previous, point, edge);
+            previous = point;
+        }
+
+        prims.Line(apex, previous, edge);
+    }
+
+    private static string PhaseOf(MunitionView munition)
+    {
+        if (munition.Ballistic)
+        {
+            return "BALLISTIC";
+        }
+
+        if (munition.Finishing)
+        {
+            return "FINISH";
+        }
+
+        if (munition.Locked)
+        {
+            return "LOCKED";
+        }
+
+        return munition.Seeker == SeekerType.Gps ? "GPS" : "SEEK";
     }
 
     private static void DrawMunition(PrimitiveBatch prims, SpriteBatch sprites, EntitySprites entitySprites, Camera2D camera, MunitionView munition, Vector2 world)

@@ -3,7 +3,6 @@ using Lattice.Sim.Engine;
 namespace Content.Shared.Components;
 
 [RegisterComponent]
-[NetworkedComponent]
 public sealed class Health : Component
 {
     [DataField]

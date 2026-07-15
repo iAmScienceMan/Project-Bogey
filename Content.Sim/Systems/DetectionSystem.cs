@@ -26,10 +26,19 @@ public sealed class DetectionSystem : EntitySystem
 
     public override void Update()
     {
-        List<int> sensors = new(_entities.Query<Sensor, Transform>());
-        List<int> targets = new(_entities.Query<Signature, Transform>());
+        List<(EntityUid Uid, string Faction, Vector2 Position, float Signature)> targets = new();
+        EntityQueryEnumerator<Signature, Transform> targetQuery = _entities.AllEntityQuery<Signature, Transform>();
+        while (targetQuery.MoveNext(out EntityUid targetEntity, out Signature signature, out Transform targetTransform))
+        {
+            targets.Add((
+                targetEntity,
+                _entities.GetComponent<Faction>(targetEntity).EffectiveId,
+                targetTransform.Position,
+                signature.Value));
+        }
 
-        foreach (int sensorEntity in sensors)
+        EntityQueryEnumerator<Sensor, Transform> sensorQuery = _entities.AllEntityQuery<Sensor, Transform>();
+        while (sensorQuery.MoveNext(out EntityUid sensorEntity, out Sensor sensor, out Transform sensorTransform))
         {
             if (!_config.AiEnabled && _entities.HasComponent<Ai>(sensorEntity))
             {
@@ -37,22 +46,17 @@ public sealed class DetectionSystem : EntitySystem
             }
 
             string observerFaction = _entities.GetComponent<Faction>(sensorEntity).EffectiveId;
-            Sensor sensor = _entities.GetComponent<Sensor>(sensorEntity);
-            Vector2 sensorPos = _entities.GetComponent<Transform>(sensorEntity).Position;
+            Vector2 sensorPos = sensorTransform.Position;
 
-            foreach (int targetEntity in targets)
+            foreach ((EntityUid targetEntity, string targetFaction, Vector2 targetPos, float signature) in targets)
             {
-                if (string.Equals(_entities.GetComponent<Faction>(targetEntity).EffectiveId, observerFaction, StringComparison.Ordinal))
+                if (string.Equals(targetFaction, observerFaction, StringComparison.Ordinal))
                 {
                     continue;
                 }
 
-                Vector2 targetPos = _entities.GetComponent<Transform>(targetEntity).Position;
-                float signature = _entities.GetComponent<Signature>(targetEntity).Value;
                 float distance = Vector2.Distance(sensorPos, targetPos);
-
                 float p = DetectionMath.Probability(distance, sensor, signature);
-
 
                 double roll = _rng.NextDouble();
                 if (roll >= p)

@@ -1,39 +1,29 @@
 <!-- ReSharper disable All -->
 <Control xmlns="clr-namespace:Lattice.Renderer.Ui.Controls;assembly=Lattice.Renderer">
 
-  <BoxContainer Anchor="Center" Orientation="Vertical" DrawBackground="false" Separation="14">
+  <BoxContainer Name="Root" Orientation="Vertical" DrawBackground="false" Separation="12" HorizontalExpand="true">
 
-    <Label Text="PROJECT BOGEY" FontSize="30" Color="#73D9FF" />
+    <Label Name="TitleLabel" Text="ESTABLISHING LINK" FontSize="16" Color="#F0F5F9" />
+    <Rule Color="#C9D6DF" Thickness="2" />
 
-    <PanelContainer>
-      <BoxContainer Orientation="Vertical" DrawBackground="false" Separation="10" Padding="22">
-
-        <BoxContainer Name="ConnectingStatus" Orientation="Vertical" DrawBackground="false" Separation="8">
-          <Label Name="ConnectingLabel" Text="Connecting to server..." FontSize="16" Color="#CCDBEB" />
-          <Label Name="ConnectStatus" Text="Establishing connection" FontSize="12" Color="#9EAECC" />
-          <Button Name="CancelButton" Text="CANCEL" FontSize="14" MinWidth="260" Negative="true" />
-        </BoxContainer>
-
-        <BoxContainer Name="ConnectFail" Orientation="Vertical" DrawBackground="false" Separation="8" Visible="false">
-          <Label Text="Failed to connect to server:" FontSize="16" Color="#F06B62" />
-          <Label Name="ConnectFailReason" Text="" FontSize="13" Color="#CCDBEB" />
-          <BoxContainer Orientation="Horizontal" DrawBackground="false" Separation="8">
-            <Button Name="RetryButton" Text="RETRY" FontSize="14" MinWidth="126" />
-            <Button Name="BackButton" Text="BACK" FontSize="14" MinWidth="126" Negative="true" />
-          </BoxContainer>
-        </BoxContainer>
-
-        <BoxContainer Name="Disconnected" Orientation="Vertical" DrawBackground="false" Separation="8" Visible="false">
-          <Label Text="Disconnected from server:" FontSize="16" Color="#F06B62" />
-          <Label Name="DisconnectReason" Text="" FontSize="13" Color="#CCDBEB" />
-          <BoxContainer Orientation="Horizontal" DrawBackground="false" Separation="8">
-            <Button Name="ReconnectButton" Text="RECONNECT" FontSize="14" MinWidth="126" />
-            <Button Name="DisconnectedBackButton" Text="BACK" FontSize="14" MinWidth="126" Negative="true" />
-          </BoxContainer>
-        </BoxContainer>
-
+    <BoxContainer Orientation="Horizontal" DrawBackground="false" Separation="16">
+      <BoxContainer Name="IndicatorSlot" Orientation="Vertical" DrawBackground="false" />
+      <BoxContainer Orientation="Vertical" DrawBackground="false" Separation="6" HorizontalExpand="true">
+        <Label Name="AddressLabel" Text="" FontSize="14" Color="#C9D6DF" />
+        <Label Name="StatusLabel" Text="Establishing connection" FontSize="12" Color="#8B98A1" />
       </BoxContainer>
-    </PanelContainer>
+    </BoxContainer>
+
+    <Rule Color="#454F55" Thickness="1" />
+
+    <BoxContainer Name="SearchingButtons" Orientation="Horizontal" DrawBackground="false">
+      <Button Name="CancelButton" Text="CANCEL" FontSize="13" MinWidth="300" Negative="true" HorizontalExpand="true" />
+    </BoxContainer>
+
+    <BoxContainer Name="LostButtons" Orientation="Horizontal" DrawBackground="false" Separation="10" Visible="false">
+      <Button Name="RetryButton" Text="RETRY" FontSize="13" MinWidth="145" HorizontalExpand="true" />
+      <Button Name="BackButton" Text="BACK" FontSize="13" MinWidth="145" Negative="true" HorizontalExpand="true" />
+    </BoxContainer>
 
   </BoxContainer>
 

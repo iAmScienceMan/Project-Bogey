@@ -13,6 +13,9 @@ public sealed class OrderingSystem : EntitySystem
     [Dependency]
     private readonly EventBus _bus = null!;
 
+    [Dependency]
+    private readonly SimClock _clock = null!;
+
     public override void Initialize()
     {
         _bus.SubscribeDirected<MoveOrderEvent>((entity, order) =>
@@ -27,18 +30,18 @@ public sealed class OrderingSystem : EntitySystem
 
     public override void Update()
     {
-        foreach (int entity in _entities.Query<Propulsion, Transform>())
+        float dt = (float)_clock.Dt;
+        EntityQueryEnumerator<Propulsion, Transform> query = _entities.AllEntityQuery<Propulsion, Transform>();
+        while (query.MoveNext(out _, out Propulsion propulsion, out Transform transform))
         {
-            Propulsion propulsion = _entities.GetComponent<Propulsion>(entity);
             if (propulsion.Waypoint is not { } waypoint)
             {
-                continue; 
+                continue;
             }
 
-            Transform transform = _entities.GetComponent<Transform>(entity);
             Vector2 toGo = waypoint - transform.Position;
             float distance = toGo.Length();
-            float stepKm = propulsion.MaxSpeedKmPerTick * (float)SimClock.SecondsPerTick;
+            float stepKm = propulsion.MaxSpeedKmPerTick * dt;
 
             if (distance < 1e-3f)
             {
@@ -49,7 +52,7 @@ public sealed class OrderingSystem : EntitySystem
 
             if (distance <= stepKm)
             {
-                transform.Velocity = toGo / (float)SimClock.SecondsPerTick;
+                transform.Velocity = toGo / dt;
                 continue;
             }
 

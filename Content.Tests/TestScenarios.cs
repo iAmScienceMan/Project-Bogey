@@ -74,6 +74,7 @@ internal static class TestScenarios
         float fovDegrees = 360f,
         bool datalink = true,
         bool targetsMunitions = false,
+        float turnRateDegPerSecond = 90f,
         params ContactDomain[] targetDomains)
         => new(
             id,
@@ -85,7 +86,7 @@ internal static class TestScenarios
                 new Signature { Value = signature },
                 new ClassificationProfile { Domain = ContactDomain.Munition, TypeName = "Missile" },
                 new Health { Max = 1f },
-                new Propulsion { MaxSpeedKmPerTick = speed },
+                new Propulsion { MaxSpeedKmPerTick = speed, MaxTurnRateDegPerSecond = turnRateDegPerSecond },
                 new Projectile
                 {
                     Damage = damage,

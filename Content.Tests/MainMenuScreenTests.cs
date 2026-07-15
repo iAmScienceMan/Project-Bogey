@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Content.Shared.Net;
 using Lattice.Renderer.Ui.Controls;
 using Content.Renderer.Ui.Screens;
 using Lattice.Shared.Changelog;
@@ -155,6 +156,71 @@ public sealed class MainMenuScreenTests
         changelog.MarkAllRead();
         screen.RefreshChangelogButton();
         Assert.That(screen.SelfAndDescendants().OfType<Button>().Any(b => b.Text == "CHANGELOG"), Is.True);
+    }
+
+    [Test]
+    public void SetServers_PopulatesRows_AndJoinConnectsSelected()
+    {
+        ConfigurationManager cfg = Config();
+        MainMenuScreen screen = Menu(cfg);
+        EditByPlaceholder(screen, "Bogeyman").Text = "MAVERICK";
+
+        screen.SetServers(new[]
+        {
+            new ServerListing { Address = "10.0.0.1:8712", Name = "Alpha", Players = 2, MaxPlayers = 8 },
+            new ServerListing { Address = "10.0.0.2:9001", Name = "Bravo", Players = 0, MaxPlayers = 4 },
+        });
+
+        string? host = null;
+        int port = 0;
+        screen.OnConnect += (h, p) =>
+        {
+            host = h;
+            port = p;
+        };
+
+        Button(screen, "Bravo").Press();
+        Button(screen, "JOIN").Press();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(host, Is.EqualTo("10.0.0.2"));
+            Assert.That(port, Is.EqualTo(9001));
+            Assert.That(cfg.GetCVar(CCVars.PlayerUsername), Is.EqualTo("MAVERICK"));
+        });
+    }
+
+    [Test]
+    public void Join_WithoutSelection_DoesNothing()
+    {
+        MainMenuScreen screen = Menu(Config());
+        screen.SetServers(new[] { new ServerListing { Address = "10.0.0.1:8712", Name = "Alpha", Players = 1, MaxPlayers = 8 } });
+
+        bool connected = false;
+        screen.OnConnect += (_, _) => connected = true;
+
+        Button(screen, "JOIN").Press();
+
+        Assert.That(connected, Is.False);
+    }
+
+    [Test]
+    public void NotFullFilter_HidesFullServers()
+    {
+        MainMenuScreen screen = Menu(Config());
+        screen.SetServers(new[]
+        {
+            new ServerListing { Address = "10.0.0.1:8712", Name = "Full", Players = 8, MaxPlayers = 8 },
+            new ServerListing { Address = "10.0.0.2:8712", Name = "Open", Players = 2, MaxPlayers = 8 },
+        });
+
+        Button(screen, "NOT FULL").Press();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(screen.SelfAndDescendants().OfType<Button>().Any(b => b.Text == "Open"), Is.True);
+            Assert.That(screen.SelfAndDescendants().OfType<Button>().Any(b => b.Text == "Full"), Is.False);
+        });
     }
 
     [Test]

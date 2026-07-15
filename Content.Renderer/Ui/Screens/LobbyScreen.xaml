@@ -1,10 +1,12 @@
 <!-- ReSharper disable All -->
 <Control xmlns="clr-namespace:Lattice.Renderer.Ui.Controls;assembly=Lattice.Renderer">
 
-  <BoxContainer Anchor="TopLeft" Margin="24 24 0 0" Orientation="Horizontal" Separation="12" Padding="10">
-    <Label Name="StartTimeLabel" Text="Round starts in: --" FontSize="15" Color="#CCDBEB" />
-    <Button Name="ReadyButton" Text="READY UP" FontSize="15" MinWidth="170" />
-  </BoxContainer>
+  <PanelContainer Anchor="TopLeft" Margin="24 24 0 0">
+    <BoxContainer Orientation="Horizontal" DrawBackground="false" Separation="14" Padding="14">
+      <Label Name="StartTimeLabel" Text="Round starts in: --" FontSize="15" Color="#C9D6DF" />
+      <Button Name="ReadyButton" Text="READY UP" FontSize="15" MinWidth="170" />
+    </BoxContainer>
+  </PanelContainer>
 
   <!--
   DISABLED UNTIL THE FEATURE IS IMPLEMENTED
@@ -15,24 +17,27 @@
   -->
 
   <PanelContainer Anchor="TopRight" Margin="0 24 24 0">
-    <BoxContainer Orientation="Vertical" DrawBackground="false" Separation="10" Padding="18">
+    <BoxContainer Orientation="Vertical" DrawBackground="false" Separation="10" Padding="22">
 
-      <Label Name="ServerNameLabel" Text="SERVER" FontSize="24" Color="#EAD46B" />
-      <Label Text="_______________________________" FontSize="10" Color="#EAD46B" />
+      <Label Name="ServerNameLabel" Text="SERVER" FontSize="22" Color="#F0F5F9" />
+      <Rule Color="#C9D6DF" Thickness="2" />
 
       <BoxContainer Orientation="Horizontal" DrawBackground="false" Separation="8">
         <Button Name="OptionsButton" Text="OPTIONS" FontSize="13" MinWidth="130" />
         <Button Name="LeaveButton" Text="LEAVE" FontSize="13" MinWidth="130" Negative="true" />
       </BoxContainer>
 
-      <Label Text="SERVER INFO" FontSize="15" Color="#73D9FF" />
-      <Label Name="ScenarioLabel" Text="Scenario: -" FontSize="13" Color="#CCDBEB" />
-      <Label Name="RoundStateLabel" Text="Round: not started" FontSize="13" Color="#CCDBEB" />
+      <Label Text="SERVER INFO" FontSize="13" Color="#8B98A1" />
+      <Rule Color="#454F55" Thickness="1" />
+      <Label Name="ScenarioLabel" Text="Scenario: -" FontSize="13" Color="#C9D6DF" />
+      <Label Name="RoundStateLabel" Text="Round: not started" FontSize="13" Color="#C9D6DF" />
 
-      <Label Text="PLAYERS" FontSize="15" Color="#73D9FF" />
+      <Label Text="PLAYERS" FontSize="13" Color="#8B98A1" />
+      <Rule Color="#454F55" Thickness="1" />
       <BoxContainer Name="PlayerList" Orientation="Vertical" DrawBackground="false" Separation="4" />
 
-      <Label Text="UNIT COLOR" FontSize="15" Color="#73D9FF" />
+      <Label Text="UNIT COLOR" FontSize="13" Color="#8B98A1" />
+      <Rule Color="#454F55" Thickness="1" />
       <BoxContainer Name="ColorRow" Orientation="Vertical" DrawBackground="false" Separation="8" />
       <Button Name="ApplyColorButton" Text="APPLY" FontSize="13" MinWidth="130" />
 

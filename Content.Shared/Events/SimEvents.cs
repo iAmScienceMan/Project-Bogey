@@ -1,5 +1,5 @@
 using System.Numerics;
-using Content.Shared.Components;
+using Lattice.Sim.Engine;
 
 namespace Content.Shared.Events;
 
@@ -23,26 +23,26 @@ public sealed record TrackDroppedEvent
 {
     public required string ObserverFaction { get; init; }
 
-    public required int TruthEntityId { get; init; }
+    public required EntityUid TruthEntityId { get; init; }
 }
 
 public sealed record DamageEvent
 {
     public required float Amount { get; init; }
 
-    public required int SourceEntity { get; init; }
+    public required EntityUid SourceEntity { get; init; }
 }
 
 public sealed record EntityDestroyedEvent
 {
-    public required int EntityId { get; init; }
+    public required EntityUid EntityId { get; init; }
 
-    public required int KillerEntity { get; init; }
+    public required EntityUid KillerEntity { get; init; }
 }
 
 public sealed record EngagementOrderEvent
 {
-    public required int Shooter { get; init; }
+    public required EntityUid Shooter { get; init; }
 
     public required int TrackId { get; init; }
 
@@ -53,18 +53,18 @@ public sealed record EngagementOrderEvent
 
 public sealed record WeaponFiredEvent
 {
-    public required int Shooter { get; init; }
+    public required EntityUid Shooter { get; init; }
 
-    public required int Target { get; init; }
+    public required EntityUid Target { get; init; }
 
     public required string Weapon { get; init; }
 }
 
 public sealed record MunitionResolvedEvent
 {
-    public required int Munition { get; init; }
+    public required EntityUid Munition { get; init; }
 
-    public required int Target { get; init; }
+    public required EntityUid Target { get; init; }
 
     public required bool Hit { get; init; }
 }

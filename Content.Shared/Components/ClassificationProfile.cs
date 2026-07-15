@@ -13,7 +13,6 @@ public enum ContactDomain
 }
 
 [RegisterComponent]
-[NetworkedComponent]
 public sealed class ClassificationProfile : Component
 {
     [DataField]

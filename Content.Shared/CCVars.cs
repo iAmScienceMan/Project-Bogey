@@ -16,6 +16,9 @@ public static class CCVars
     public static readonly CVarDef<bool> NetGraph =
         CVarDef.Create("net.graph", false, CVarFlags.None, "Draw the network statistics graph overlay.");
 
+    public static readonly CVarDef<string> HubUrl =
+        CVarDef.Create("hub.url", "http://localhost:8080/", CVarFlags.Archive, "Base URL of the server-list hub the client queries.");
+
     public static readonly CVarDef<string> GameNameVisibility =
         CVarDef.Create(
             "game.name_visibility",

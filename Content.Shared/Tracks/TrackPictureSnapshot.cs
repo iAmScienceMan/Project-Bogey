@@ -34,6 +34,13 @@ public sealed record MunitionView
     public required float HeadingRadians { get; init; }
     public required SeekerType Seeker { get; init; }
     public required bool Locked { get; init; }
+    public float FovDegrees { get; init; } = 360f;
+    public float AcquisitionRangeKm { get; init; }
+    public Vector2 Datum { get; init; }
+    public bool DatumPassed { get; init; }
+    public bool Ballistic { get; init; }
+    public bool Finishing { get; init; }
+    public Vector2? TargetPosition { get; init; }
     public string? Sprite { get; init; }
     public float SpriteScale { get; init; } = 1f;
     public bool SpriteVisible { get; init; } = true;

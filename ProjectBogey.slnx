@@ -4,6 +4,7 @@
     <Project Path="Content.Sim/Content.Sim.csproj" />
     <Project Path="Content.Renderer/Content.Renderer.csproj" />
     <Project Path="Content.Server/Content.Server.csproj" />
+    <Project Path="Content.Hub/Content.Hub.csproj" />
     <Project Path="Content.Client/Content.Client.csproj" />
   </Folder>
   <Folder Name="/tests/">

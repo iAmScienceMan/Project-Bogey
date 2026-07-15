@@ -99,16 +99,4 @@ public sealed class OptionsScreenTests
             Assert.That(scale.Text, Is.EqualTo("1"));
         });
     }
-
-    [Test]
-    public void Back_RaisesEvent()
-    {
-        OptionsScreen screen = new(Config());
-        bool back = false;
-        screen.OnBack += () => back = true;
-
-        Button(screen, "BACK").Press();
-
-        Assert.That(back, Is.True);
-    }
 }

@@ -12,7 +12,6 @@ public enum FactionType
 
 
 [RegisterComponent]
-[NetworkedComponent]
 public sealed class Faction : Component
 {
     [DataField]

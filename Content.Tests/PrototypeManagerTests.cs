@@ -37,7 +37,7 @@ public sealed class PrototypeManagerTests
         _prototypes.LoadYaml(yaml);
 
         EntityManager entities = new();
-        int entity = _prototypes.SpawnEntity(entities, "flagship");
+        EntityUid entity = _prototypes.SpawnEntity(entities, "flagship");
 
         Assert.Multiple(() =>
         {
@@ -64,7 +64,7 @@ public sealed class PrototypeManagerTests
             """);
 
         EntityManager entities = new();
-        int entity = _prototypes.SpawnEntity(entities, "interceptor");
+        EntityUid entity = _prototypes.SpawnEntity(entities, "interceptor");
 
         Assert.Multiple(() =>
         {
@@ -104,7 +104,7 @@ public sealed class PrototypeManagerTests
             """);
 
         EntityManager entities = new();
-        int entity = _prototypes.SpawnEntity(entities, "picket");
+        EntityUid entity = _prototypes.SpawnEntity(entities, "picket");
 
         Assert.Multiple(() =>
         {
@@ -159,7 +159,7 @@ public sealed class PrototypeManagerTests
             """);
 
         EntityManager entities = new();
-        int entity = _prototypes.SpawnEntity(entities, "mixed");
+        EntityUid entity = _prototypes.SpawnEntity(entities, "mixed");
 
         Assert.Multiple(() =>
         {
@@ -203,7 +203,7 @@ public sealed class PrototypeManagerTests
             """);
 
         EntityManager entities = new();
-        int entity = _prototypes.SpawnEntity(entities, "flagship");
+        EntityUid entity = _prototypes.SpawnEntity(entities, "flagship");
 
         MetaData meta = entities.GetComponent<MetaData>(entity);
         Assert.Multiple(() =>
@@ -231,7 +231,7 @@ public sealed class PrototypeManagerTests
             """);
 
         EntityManager entities = new();
-        int entity = _prototypes.SpawnEntity(entities, "carp");
+        EntityUid entity = _prototypes.SpawnEntity(entities, "carp");
 
         Assert.That(entities.GetComponent<MetaData>(entity).Name, Is.EqualTo("space carp"));
     }
@@ -279,7 +279,7 @@ public sealed class PrototypeManagerTests
             """);
 
         EntityManager entities = new();
-        int entity = _prototypes.SpawnEntity(entities, "ship");
+        EntityUid entity = _prototypes.SpawnEntity(entities, "ship");
 
         Assert.Multiple(() =>
         {
@@ -300,7 +300,7 @@ public sealed class PrototypeManagerTests
             """);
 
         EntityManager entities = new();
-        int entity = _prototypes.SpawnEntity(entities, "ship");
+        EntityUid entity = _prototypes.SpawnEntity(entities, "ship");
         Sprite sprite = entities.GetComponent<Sprite>(entity);
 
         Assert.Multiple(() =>
@@ -322,8 +322,8 @@ public sealed class PrototypeManagerTests
             """);
 
         EntityManager entities = new();
-        int a = _prototypes.SpawnEntity(entities, "dot");
-        int b = _prototypes.SpawnEntity(entities, "dot");
+        EntityUid a = _prototypes.SpawnEntity(entities, "dot");
+        EntityUid b = _prototypes.SpawnEntity(entities, "dot");
 
         entities.GetComponent<Signature>(a).Value = 9f;
         Assert.That(

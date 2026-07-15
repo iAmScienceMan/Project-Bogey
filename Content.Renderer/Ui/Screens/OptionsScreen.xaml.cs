@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using Lattice.Renderer.Ui;
+using System.Numerics;
 using Lattice.Renderer.Gl;
-using Lattice.Renderer.Text;
+using Lattice.Renderer.Ui;
 using Lattice.Renderer.Ui.Controls;
 using Lattice.Renderer.Ui.Xaml;
 using Lattice.Shared.Configuration;
@@ -20,7 +20,6 @@ public sealed partial class OptionsScreen : Control
     private readonly List<Action> _apply = new();
     private readonly List<CVarDef> _managed = new();
     private readonly List<string> _errors = new();
-    private float _phase;
 
     public OptionsScreen(IConfigurationManager cfg)
     {
@@ -34,13 +33,10 @@ public sealed partial class OptionsScreen : Control
         AdvancedTab.OnPressed += () => ShowPage(basic: false);
         ApplyButton.OnPressed += Apply;
         ResetButton.OnPressed += Reset;
-        BackButton.OnPressed += () => OnBack?.Invoke();
 
         Refresh();
         ShowPage(basic: true);
     }
-
-    public event Action? OnBack;
 
     public void Refresh()
     {
@@ -50,21 +46,12 @@ public sealed partial class OptionsScreen : Control
         }
     }
 
-    public override void FrameUpdate(float dt)
-    {
-        base.FrameUpdate(dt);
-        _phase += dt * 6f;
-    }
+    public override Vector2 Measure() => Root.Measure();
 
-    public override void Draw(PrimitiveBatch prims, TextBatch text)
+    public override void Arrange(UiRect rect)
     {
-        if (!Visible)
-        {
-            return;
-        }
-
-        MenuBackground.Draw(prims, Bounds, _phase);
-        base.Draw(prims, text);
+        Bounds = rect;
+        Root.Arrange(rect);
     }
 
     private void BuildBasicPage()

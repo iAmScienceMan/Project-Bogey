@@ -61,6 +61,13 @@ public sealed class SerializationTests
                     HeadingRadians = 1.2f,
                     Seeker = SeekerType.ActiveRadar,
                     Locked = true,
+                    FovDegrees = 55f,
+                    AcquisitionRangeKm = 18f,
+                    Datum = new Vector2(40f, 12f),
+                    DatumPassed = true,
+                    Ballistic = false,
+                    Finishing = true,
+                    TargetPosition = new Vector2(41f, 13f),
                     Sprite = "missile.png",
                     SpriteScale = 1f,
                     SpriteVisible = true,
@@ -83,6 +90,12 @@ public sealed class SerializationTests
             Assert.That(wire.OwnUnits[0].Weapons[1].PointDefense, Is.True);
             Assert.That(wire.Munitions[0].Seeker, Is.EqualTo(SeekerType.ActiveRadar));
             Assert.That(wire.Munitions[0].Locked, Is.True);
+            Assert.That(wire.Munitions[0].FovDegrees, Is.EqualTo(55f));
+            Assert.That(wire.Munitions[0].AcquisitionRangeKm, Is.EqualTo(18f));
+            Assert.That(wire.Munitions[0].Datum, Is.EqualTo(new Vector2(40f, 12f)));
+            Assert.That(wire.Munitions[0].DatumPassed, Is.True);
+            Assert.That(wire.Munitions[0].Finishing, Is.True);
+            Assert.That(wire.Munitions[0].TargetPosition, Is.EqualTo(new Vector2(41f, 13f)));
         });
     }
 

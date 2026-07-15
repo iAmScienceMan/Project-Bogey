@@ -1,27 +1,24 @@
 <!-- ReSharper disable All -->
 <Control xmlns="clr-namespace:Lattice.Renderer.Ui.Controls;assembly=Lattice.Renderer">
 
-  <BoxContainer Anchor="Center" Orientation="Vertical" DrawBackground="false" Separation="12">
-
-    <Label Text="OPTIONS" FontSize="24" Color="#73D9FF" />
+  <BoxContainer Name="Root" Orientation="Vertical" DrawBackground="false" Separation="10">
 
     <BoxContainer Orientation="Horizontal" DrawBackground="false" Separation="8">
-      <Button Name="BasicTab" Text="BASIC" FontSize="15" MinWidth="150" />
-      <Button Name="AdvancedTab" Text="ADVANCED" FontSize="15" MinWidth="150" />
+      <Button Name="BasicTab" Text="BASIC" FontSize="14" MinWidth="150" />
+      <Button Name="AdvancedTab" Text="ADVANCED" FontSize="14" MinWidth="150" />
     </BoxContainer>
 
     <PanelContainer>
       <BoxContainer Orientation="Vertical" DrawBackground="false" Separation="8" Padding="16">
         <GridContainer Name="BasicPage" Columns="2" Separation="8" />
         <GridContainer Name="AdvancedPage" Columns="2" Separation="8" Visible="false" />
-        <Label Name="StatusLabel" FontSize="12" Color="#9EAECC" Text="" />
+        <Label Name="StatusLabel" FontSize="12" Color="#8B98A1" Text="" />
       </BoxContainer>
     </PanelContainer>
 
     <BoxContainer Orientation="Horizontal" DrawBackground="false" Separation="8">
-      <Button Name="ApplyButton" Text="APPLY" FontSize="15" MinWidth="150" />
-      <Button Name="ResetButton" Text="RESET" FontSize="15" MinWidth="150" />
-      <Button Name="BackButton" Text="BACK" FontSize="15" MinWidth="150" Negative="true" />
+      <Button Name="ApplyButton" Text="APPLY" FontSize="14" MinWidth="150" />
+      <Button Name="ResetButton" Text="RESET" FontSize="14" MinWidth="150" />
     </BoxContainer>
 
   </BoxContainer>

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Numerics;
 using Lattice.Renderer.Ui;
 using Lattice.Renderer.Gl;
 using Lattice.Renderer.Text;
@@ -13,22 +14,25 @@ namespace Content.Renderer.Ui.Screens;
 [GenerateTypedNameReferences]
 public sealed partial class ChangelogScreen : Control
 {
-    private static readonly Rgba AddColor = Rgba.Parse("#6ED18D");
-    private static readonly Rgba RemoveColor = Rgba.Parse("#D16E6E");
-    private static readonly Rgba FixColor = Rgba.Parse("#D1BA6E");
-    private static readonly Rgba TweakColor = Rgba.Parse("#6E96D1");
-
-    private float _phase;
+    private static readonly Rgba AddColor = Rgba.Parse("#8FB39A");
+    private static readonly Rgba RemoveColor = Rgba.Parse("#C79AA2");
+    private static readonly Rgba FixColor = Rgba.Parse("#BCB48C");
+    private static readonly Rgba TweakColor = Rgba.Parse("#9FB2C0");
 
     public ChangelogScreen()
     {
         LatticeXaml.Load(this);
-        BackButton.OnPressed += () => OnBack?.Invoke();
     }
 
-    public event Action? OnBack;
-
     public void HandleScroll(float wheelY) => List.HandleScroll(wheelY);
+
+    public override Vector2 Measure() => List.Measure();
+
+    public override void Arrange(UiRect rect)
+    {
+        Bounds = rect;
+        List.Arrange(rect);
+    }
 
     public void Populate(IChangelogManager changelog)
     {
@@ -85,29 +89,49 @@ public sealed partial class ChangelogScreen : Control
         }
     }
 
-    public override void FrameUpdate(float dt)
-    {
-        base.FrameUpdate(dt);
-        _phase += dt * 6f;
-    }
-
-    public override void Draw(PrimitiveBatch prims, TextBatch text)
-    {
-        if (!Visible)
-        {
-            return;
-        }
-
-        MenuBackground.Draw(prims, Bounds, _phase);
-        base.Draw(prims, text);
-    }
+    private const float RowFontSize = 12f;
+    private const float MessageWidth = 452f;
 
     private static Control ChangeRow(ChangelogChange change)
     {
-        BoxContainer row = new() { Orientation = Orientation.Horizontal, DrawBackground = false, Separation = 8f };
-        row.AddChild(Text(TagFor(change.Type), 12f, ColorFor(change.Type)));
-        row.AddChild(Text(change.Message, 12f, UiTheme.Text));
-        return row;
+        List<string> lines = Wrap(change.Message, MessageWidth, RowFontSize);
+
+        BoxContainer column = new() { Orientation = Orientation.Vertical, DrawBackground = false, Separation = 2f };
+
+        BoxContainer first = new() { Orientation = Orientation.Horizontal, DrawBackground = false, Separation = 8f };
+        first.AddChild(Text(TagFor(change.Type), RowFontSize, ColorFor(change.Type)));
+        first.AddChild(Text(lines[0], RowFontSize, UiTheme.Text));
+        column.AddChild(first);
+
+        for (int i = 1; i < lines.Count; i++)
+        {
+            column.AddChild(Text("      " + lines[i], RowFontSize, UiTheme.Text));
+        }
+
+        return column;
+    }
+
+    private static List<string> Wrap(string text, float maxWidth, float fontSize)
+    {
+        List<string> lines = new();
+        string current = string.Empty;
+
+        foreach (string word in text.Split(' '))
+        {
+            string trial = current.Length == 0 ? word : current + " " + word;
+            if (current.Length > 0 && TextBatch.Measure(trial, fontSize) > maxWidth)
+            {
+                lines.Add(current);
+                current = word;
+            }
+            else
+            {
+                current = trial;
+            }
+        }
+
+        lines.Add(current);
+        return lines;
     }
 
     private static Label Text(string text, float fontSize, Rgba color)

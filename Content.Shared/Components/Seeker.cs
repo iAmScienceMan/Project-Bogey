@@ -13,7 +13,6 @@ public enum SeekerType
 }
 
 [RegisterComponent]
-[NetworkedComponent]
 public sealed class Seeker : Component
 {
     [DataField]
@@ -31,7 +30,7 @@ public sealed class Seeker : Component
     [DataField]
     public bool TargetsMunitions { get; set; }
 
-    public int LockedEntity { get; set; } = -1;
+    public EntityUid LockedEntity { get; set; } = EntityUid.Invalid;
 
-    public bool Locked => LockedEntity >= 0;
+    public bool Locked => LockedEntity.Valid;
 }

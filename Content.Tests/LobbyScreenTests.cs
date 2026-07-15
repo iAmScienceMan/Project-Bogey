@@ -103,7 +103,7 @@ public sealed class LobbyScreenTests
 
         screen.ShowConnecting("10.0.0.1:8712");
         Assert.That(
-            screen.SelfAndDescendants().OfType<Label>().Any(l => l.Text == "Connecting to 10.0.0.1:8712..."),
+            screen.SelfAndDescendants().OfType<Label>().Any(l => l.Text == "10.0.0.1:8712"),
             Is.True);
 
         screen.ShowFailure("The username 'bob' is already present on server!", wasConnected: false);

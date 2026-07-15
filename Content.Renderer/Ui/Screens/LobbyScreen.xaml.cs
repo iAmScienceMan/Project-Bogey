@@ -17,7 +17,6 @@ namespace Content.Renderer.Ui.Screens;
 public sealed partial class LobbyScreen : Control
 {
     private readonly HueSlider _colorSlider = new();
-    private float _phase;
     private float _sinceStatus;
     private LobbyStatus? _status;
     private string _username = string.Empty;
@@ -67,7 +66,6 @@ public sealed partial class LobbyScreen : Control
     public override void FrameUpdate(float dt)
     {
         base.FrameUpdate(dt);
-        _phase += dt * 6f;
         _sinceStatus += dt;
         RefreshCountdown();
     }
@@ -79,7 +77,7 @@ public sealed partial class LobbyScreen : Control
             return;
         }
 
-        MenuBackground.Draw(prims, Bounds, _phase);
+        MenuBackground.Draw(prims, Bounds);
         base.Draw(prims, text);
     }
 

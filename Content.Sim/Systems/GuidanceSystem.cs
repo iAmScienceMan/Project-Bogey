@@ -12,6 +12,7 @@ public sealed class GuidanceSystem : EntitySystem
 {
     private const float OffDomainPkFactor = 0.15f;
     private const float MaxLeadTicks = 120f;
+    private const float DatumSmoothing = 0.35f;
 
     [Dependency]
     private readonly EntityManager _entities = null!;
@@ -24,6 +25,9 @@ public sealed class GuidanceSystem : EntitySystem
 
     [Dependency]
     private readonly Random _rng = null!;
+
+    [Dependency]
+    private readonly SimClock _clock = null!;
 
     public override void Initialize()
     {
@@ -39,14 +43,10 @@ public sealed class GuidanceSystem : EntitySystem
 
     public override void Update()
     {
-        foreach (int entity in _entities.Query<Projectile, Transform>())
+        float maxTurnScale = (float)_clock.Dt * (MathF.PI / 180f);
+        EntityQueryEnumerator<Projectile, Transform> query = _entities.AllEntityQuery<Projectile, Transform>();
+        while (query.MoveNext(out EntityUid entity, out Projectile projectile, out Transform transform))
         {
-            if (!_entities.TryGetComponent(entity, out Projectile projectile)
-                || !_entities.TryGetComponent(entity, out Transform transform))
-            {
-                continue;
-            }
-
             if (!UpdateEnergy(projectile))
             {
                 Resolve(entity, projectile, hit: false);
@@ -60,23 +60,38 @@ public sealed class GuidanceSystem : EntitySystem
             Seeker? seeker = _entities.TryGetComponent(entity, out Seeker found) ? found : null;
             SeekerType type = seeker?.Kind ?? SeekerType.Gps;
 
+            bool targetAlive = IsAliveTarget(projectile.TargetEntity);
+            if (targetAlive)
+            {
+                projectile.LastTargetPosition = _entities.GetComponent<Transform>(projectile.TargetEntity).Position;
+                projectile.HadLiveTarget = true;
+            }
+
             if (seeker is not null && type != SeekerType.Gps)
             {
                 UpdateSeekerLock(entity, projectile, seeker, transform.Position, heading);
             }
 
             UpdateDatum(projectile, type, seeker, transform.Position);
+            HandleLostTarget(projectile, seeker, type, targetAlive);
 
             float speed = projectile.SpeedKmPerTick;
             Vector2 aimpoint = SelectAimpoint(projectile, seeker, type, transform.Position, heading, speed);
 
-            Vector2 direction = SafeDirection(aimpoint - transform.Position);
-            if (direction == Vector2.Zero)
+            Vector2 desired = SafeDirection(aimpoint - transform.Position);
+            if (desired == Vector2.Zero)
             {
-                direction = heading == Vector2.Zero ? new Vector2(1f, 0f) : heading;
+                desired = heading == Vector2.Zero ? new Vector2(1f, 0f) : heading;
             }
 
-            Vector2 step = direction * speed;
+            float maxTurn = TurnRateOf(entity) * maxTurnScale;
+            Vector2 newHeading = projectile.Ballistic ? heading : RotateToward(heading, desired, maxTurn);
+            if (newHeading == Vector2.Zero)
+            {
+                newHeading = new Vector2(1f, 0f);
+            }
+
+            Vector2 step = newHeading * speed;
 
             if (TryFuse(entity, projectile, seeker, type, transform.Position, step))
             {
@@ -95,6 +110,61 @@ public sealed class GuidanceSystem : EntitySystem
         }
     }
 
+    private bool IsAliveTarget(EntityUid target)
+        => target.Valid
+           && _entities.HasComponent<Transform>(target)
+           && _entities.TryGetComponent(target, out Health health)
+           && health.IsAlive;
+
+    private void HandleLostTarget(Projectile projectile, Seeker? seeker, SeekerType type, bool targetAlive)
+    {
+        if (targetAlive
+            || type == SeekerType.Gps
+            || !projectile.HadLiveTarget
+            || seeker is { Locked: true }
+            || projectile.Ballistic
+            || projectile.Finishing)
+        {
+            return;
+        }
+
+        if (!projectile.DatumPassed)
+        {
+            projectile.Datum = projectile.LastTargetPosition;
+            projectile.Finishing = true;
+        }
+        else
+        {
+            projectile.Ballistic = true;
+        }
+    }
+
+    private float TurnRateOf(EntityUid entity)
+        => _entities.TryGetComponent(entity, out Propulsion propulsion)
+            ? propulsion.MaxTurnRateDegPerSecond
+            : 90f;
+
+    private static Vector2 RotateToward(Vector2 from, Vector2 to, float maxRadians)
+    {
+        if (from == Vector2.Zero || to == Vector2.Zero)
+        {
+            return to == Vector2.Zero ? from : to;
+        }
+
+        float dot = Math.Clamp(Vector2.Dot(from, to), -1f, 1f);
+        float angle = MathF.Acos(dot);
+        if (angle <= maxRadians)
+        {
+            return to;
+        }
+
+        float cross = (from.X * to.Y) - (from.Y * to.X);
+        float step = cross < 0f ? -maxRadians : maxRadians;
+        float s = MathF.Sin(step);
+        float c = MathF.Cos(step);
+        return new Vector2((from.X * c) - (from.Y * s), (from.X * s) + (from.Y * c));
+    }
+
     private static bool UpdateEnergy(Projectile projectile)
     {
         if (projectile.MotorBurnTicksRemaining > 0)
@@ -107,16 +177,16 @@ public sealed class GuidanceSystem : EntitySystem
         return projectile.SpeedKmPerTick > projectile.BurnoutSpeedKmPerTick;
     }
 
-    private void UpdateSeekerLock(int munition, Projectile projectile, Seeker seeker, Vector2 position, Vector2 heading)
+    private void UpdateSeekerLock(EntityUid munition, Projectile projectile, Seeker seeker, Vector2 position, Vector2 heading)
     {
-        if (seeker.LockedEntity >= 0
+        if (seeker.LockedEntity.Valid
             && IsLockable(munition, projectile, seeker, seeker.LockedEntity)
             && WithinSeeker(position, heading, _entities.GetComponent<Transform>(seeker.LockedEntity).Position, seeker))
         {
             return;
         }
 
-        seeker.LockedEntity = -1;
+        seeker.LockedEntity = EntityUid.Invalid;
 
         if (IsLockable(munition, projectile, seeker, projectile.TargetEntity)
             && WithinSeeker(position, heading, _entities.GetComponent<Transform>(projectile.TargetEntity).Position, seeker))
@@ -125,16 +195,17 @@ public sealed class GuidanceSystem : EntitySystem
             return;
         }
 
-        int best = -1;
+        EntityUid best = EntityUid.Invalid;
         float bestDistance = float.MaxValue;
-        foreach (int candidate in _entities.Query<Transform, Health>())
+        EntityQueryEnumerator<Transform, Health> query = _entities.AllEntityQuery<Transform, Health>();
+        while (query.MoveNext(out EntityUid candidate, out Transform candidateTransform, out Health _))
         {
             if (!IsLockable(munition, projectile, seeker, candidate))
             {
                 continue;
             }
 
-            Vector2 candidatePosition = _entities.GetComponent<Transform>(candidate).Position;
+            Vector2 candidatePosition = candidateTransform.Position;
             if (!WithinSeeker(position, heading, candidatePosition, seeker)
                 || !WithinAcquisitionBasket(projectile, seeker, candidatePosition))
             {
@@ -157,9 +228,9 @@ public sealed class GuidanceSystem : EntitySystem
            || seeker.Kind == SeekerType.AntiRadiation
            || Vector2.Distance(candidatePosition, projectile.Datum) <= seeker.AcquisitionRangeKm;
 
-    private bool IsLockable(int munition, Projectile projectile, Seeker seeker, int candidate)
+    private bool IsLockable(EntityUid munition, Projectile projectile, Seeker seeker, EntityUid candidate)
     {
-        if (candidate < 0 || candidate == munition || candidate == projectile.OwnerEntity)
+        if (!candidate.Valid || candidate == munition || candidate == projectile.OwnerEntity)
         {
             return false;
         }
@@ -192,7 +263,7 @@ public sealed class GuidanceSystem : EntitySystem
             && profile.Domain is ContactDomain.Air or ContactDomain.Surface or ContactDomain.Munition;
     }
 
-    private bool IsIlluminatedByShooter(int shooter, int candidate)
+    private bool IsIlluminatedByShooter(EntityUid shooter, EntityUid candidate)
         => _entities.HasComponent<Transform>(shooter)
            && _entities.TryGetComponent(shooter, out WeaponControl control)
            && control.LockedTarget == candidate;
@@ -206,17 +277,21 @@ public sealed class GuidanceSystem : EntitySystem
             _ => false,
         };
 
-        if (!guided || !ShooterMaintainsLock(projectile))
+        if (!guided || !ShooterMaintainsLock(projectile) || !IsAliveTarget(projectile.TargetEntity))
         {
             return;
         }
 
-        if (_tracking.EntriesFor(projectile.ObserverFaction).TryGetValue(projectile.TargetEntity, out Track? track))
+        if (!_tracking.EntriesFor(projectile.ObserverFaction).TryGetValue(projectile.TargetEntity, out Track? track)
+            || track.State is TrackState.Stale or TrackState.Dropped)
         {
-            projectile.Datum = InterceptPoint(
-                missilePosition, projectile.SpeedKmPerTick, track.EstimatedPosition, track.EstimatedVelocity);
-            projectile.DatumPassed = false;
+            return;
         }
+
+        Vector2 fresh = InterceptPoint(
+            missilePosition, projectile.SpeedKmPerTick, track.EstimatedPosition, track.EstimatedVelocity);
+        projectile.Datum = projectile.DatumPassed ? fresh : Vector2.Lerp(projectile.Datum, fresh, DatumSmoothing);
+        projectile.DatumPassed = false;
     }
 
     private bool ShooterMaintainsLock(Projectile projectile)
@@ -227,12 +302,17 @@ public sealed class GuidanceSystem : EntitySystem
     private Vector2 SelectAimpoint(
         Projectile projectile, Seeker? seeker, SeekerType type, Vector2 position, Vector2 heading, float speed)
     {
-        if (seeker is { LockedEntity: >= 0 } && _entities.TryGetComponent(seeker.LockedEntity, out Transform locked))
+        if (seeker is { Locked: true } && _entities.TryGetComponent(seeker.LockedEntity, out Transform locked))
         {
             return InterceptPoint(position, speed, locked.Position, locked.Velocity);
         }
 
-        if (type == SeekerType.Gps || !projectile.DatumPassed)
+        if (projectile.Ballistic)
+        {
+            return position + (heading * MathF.Max(speed, 1f));
+        }
+
+        if (type == SeekerType.Gps || projectile.Finishing || !projectile.DatumPassed)
         {
             return projectile.Datum;
         }
@@ -240,9 +320,9 @@ public sealed class GuidanceSystem : EntitySystem
         return position + (heading * MathF.Max(speed, 1f));
     }
 
-    private bool TryFuse(int munition, Projectile projectile, Seeker? seeker, SeekerType type, Vector2 position, Vector2 step)
+    private bool TryFuse(EntityUid munition, Projectile projectile, Seeker? seeker, SeekerType type, Vector2 position, Vector2 step)
     {
-        if (seeker is { LockedEntity: >= 0 } && _entities.TryGetComponent(seeker.LockedEntity, out Transform locked))
+        if (seeker is { Locked: true } && _entities.TryGetComponent(seeker.LockedEntity, out Transform locked))
         {
             Vector2 closest = ClosestPointOnSegment(position, position + step, locked.Position);
             if (Vector2.Distance(closest, locked.Position) <= projectile.DetonationRangeKm)
@@ -254,7 +334,7 @@ public sealed class GuidanceSystem : EntitySystem
             return false;
         }
 
-        if (type == SeekerType.Gps)
+        if (type == SeekerType.Gps || projectile.Finishing)
         {
             Vector2 closest = ClosestPointOnSegment(position, position + step, projectile.Datum);
             if (Vector2.Distance(closest, projectile.Datum) <= projectile.DetonationRangeKm)
@@ -267,23 +347,24 @@ public sealed class GuidanceSystem : EntitySystem
         return false;
     }
 
-    private void Burst(int munition, Projectile projectile, Vector2 burstPoint)
+    private void Burst(EntityUid munition, Projectile projectile, Vector2 burstPoint)
     {
         bool hit = false;
 
-        foreach (int victim in _entities.Query<Transform, Health>())
+        EntityQueryEnumerator<Transform, Health> query = _entities.AllEntityQuery<Transform, Health>();
+        while (query.MoveNext(out EntityUid victim, out Transform victimTransform, out Health victimHealth))
         {
             if (victim == munition || victim == projectile.OwnerEntity)
             {
                 continue;
             }
 
-            if (!_entities.GetComponent<Health>(victim).IsAlive)
+            if (!victimHealth.IsAlive)
             {
                 continue;
             }
 
-            if (Vector2.Distance(_entities.GetComponent<Transform>(victim).Position, burstPoint) > projectile.DetonationRangeKm)
+            if (Vector2.Distance(victimTransform.Position, burstPoint) > projectile.DetonationRangeKm)
             {
                 continue;
             }
@@ -304,7 +385,7 @@ public sealed class GuidanceSystem : EntitySystem
         Resolve(munition, projectile, hit);
     }
 
-    private float EffectivePk(Projectile projectile, int victim)
+    private float EffectivePk(Projectile projectile, EntityUid victim)
     {
         if (projectile.TargetDomains.Count == 0)
         {
@@ -397,7 +478,7 @@ public sealed class GuidanceSystem : EntitySystem
         return length > 1e-6f ? delta / length : Vector2.Zero;
     }
 
-    private void Resolve(int munition, Projectile projectile, bool hit)
+    private void Resolve(EntityUid munition, Projectile projectile, bool hit)
     {
         _bus.Publish(new MunitionResolvedEvent
         {
