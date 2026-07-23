@@ -59,6 +59,7 @@ public sealed class SimRuntime
             .AddSystem(new AiSystem())
             .AddSystem(new OrderingSystem())
             .AddSystem(new FireControlSystem())
+            .AddSystem(new CountermeasureSystem())
             .AddSystem(new GuidanceSystem())
             .AddSystem(new MovementSystem())
             .AddSystem(new DetectionSystem())
@@ -131,7 +132,7 @@ public sealed class SimRuntime
     {
         foreach (EntityUid entity in _entities.Query<Faction>())
         {
-            if (_entities.HasComponent<Projectile>(entity))
+            if (_entities.HasComponent<Projectile>(entity) || _entities.HasComponent<Decoy>(entity))
             {
                 continue;
             }
@@ -362,7 +363,9 @@ public sealed class SimRuntime
         {
             foreach (EntityUid entity in _entities.Query<Transform, MetaData>())
             {
-                if (tracked.Contains(entity) || _entities.HasComponent<Projectile>(entity))
+                if (tracked.Contains(entity)
+                    || _entities.HasComponent<Projectile>(entity)
+                    || _entities.HasComponent<Decoy>(entity))
                 {
                     continue;
                 }
@@ -450,7 +453,7 @@ public sealed class SimRuntime
                 continue;
             }
 
-            if (_entities.HasComponent<Projectile>(entity))
+            if (_entities.HasComponent<Projectile>(entity) || _entities.HasComponent<Decoy>(entity))
             {
                 continue;
             }
@@ -477,6 +480,8 @@ public sealed class SimRuntime
                 HullCurrent = health?.Current ?? 0f,
                 HullMax = health?.Max ?? 0f,
                 LockedTrackId = lockedTrackId,
+                Rwr = RwrThreatTo(entity),
+                MaxWeaponRangeKm = MaxWeaponRangeOf(entity),
                 Sprite = sprite?.Texture,
                 SpriteScale = sprite?.Scale ?? 1f,
                 SpriteVisible = sprite?.Visible ?? true,
@@ -485,6 +490,58 @@ public sealed class SimRuntime
         }
 
         return own;
+    }
+
+    private float MaxWeaponRangeOf(EntityUid unit)
+    {
+        if (!_entities.TryGetComponent(unit, out Loadout loadout))
+        {
+            return 0f;
+        }
+
+        float best = 0f;
+        foreach (WeaponMount mount in loadout.Mounts)
+        {
+            if (mount.PointDefense || !_prototypes.Has(mount.ProjectilePrototype))
+            {
+                continue;
+            }
+
+            if (_prototypes.Get(mount.ProjectilePrototype).TryGetComponent(out Projectile projectile)
+                && projectile.RangeKm > best)
+            {
+                best = projectile.RangeKm;
+            }
+        }
+
+        return best;
+    }
+
+    private RwrThreat RwrThreatTo(EntityUid unit)
+    {
+        foreach (EntityUid missile in _entities.Query<Projectile>())
+        {
+            if (_entities.TryGetComponent(missile, out Seeker seeker)
+                && seeker.Locked
+                && seeker.LockedEntity == unit
+                && seeker.Kind is SeekerType.ActiveRadar or SeekerType.SemiActiveRadar)
+            {
+                return RwrThreat.MissileActive;
+            }
+        }
+
+        Faction unitFaction = _entities.GetComponent<Faction>(unit);
+        foreach (EntityUid shooter in _entities.Query<WeaponControl>())
+        {
+            if (_entities.GetComponent<WeaponControl>(shooter).LockedTarget == unit
+                && _entities.TryGetComponent(shooter, out Faction shooterFaction)
+                && Factions.AreHostile(shooterFaction, unitFaction))
+            {
+                return RwrThreat.LockedOn;
+            }
+        }
+
+        return RwrThreat.None;
     }
 
     private IReadOnlyList<WeaponStatusView> CollectWeapons(EntityUid entity)

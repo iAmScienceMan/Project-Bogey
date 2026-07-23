@@ -107,6 +107,18 @@ internal static class TestScenarios
                 },
             });
 
+    public static ProtoSpec DecoyProto(string id, DecoyKind kind)
+        => new(
+            id,
+            () => new List<IComponent>
+            {
+                new MetaData { EntityName = id },
+                new Faction { Side = FactionType.Neutral },
+                new Transform(),
+                new Health { Max = 1f },
+                new Decoy { Kind = kind, LifetimeTicks = 8 },
+            });
+
     public static WeaponMount Mount(string projectile, int cooldownTicks, int magazine)
         => new()
         {
@@ -137,7 +149,8 @@ internal static class TestScenarios
         List<WeaponMount>? weapons = null,
         float vx = 0f, float vy = 0f,
         WeaponPosture posture = WeaponPosture.Free,
-        AiBehavior? ai = null)
+        AiBehavior? ai = null,
+        Countermeasures? countermeasures = null)
         => new(
             () =>
             {
@@ -177,6 +190,11 @@ internal static class TestScenarios
                     components.Add(new Ai { Behavior = behavior });
                 }
 
+                if (countermeasures is not null)
+                {
+                    components.Add(countermeasures);
+                }
+
                 return components;
             },
             new Vector2(x, y),
@@ -184,6 +202,10 @@ internal static class TestScenarios
 
     public static SimRuntime BuildCombat(
         IEnumerable<ProtoSpec> library, int seed, SimConfig? config, params SpawnSpec[] specs)
+        => BuildCombat(library, seed, config, 1.0, specs);
+
+    public static SimRuntime BuildCombat(
+        IEnumerable<ProtoSpec> library, int seed, SimConfig? config, double dt, params SpawnSpec[] specs)
     {
         PrototypeManager prototypes = NewManager();
         foreach (ProtoSpec lib in library)
@@ -193,7 +215,7 @@ internal static class TestScenarios
 
         ScenarioDefinition scenario = new() { Id = "combat" };
         AddSpawns(prototypes, scenario, specs, "u");
-        return new SimRuntime(scenario, prototypes, seed, config);
+        return new SimRuntime(scenario, prototypes, seed, config, dt: dt);
     }
 
     public static SimRuntime Build(int seed, SimConfig? config, params SpawnSpec[] specs)

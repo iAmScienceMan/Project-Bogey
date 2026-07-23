@@ -24,3 +24,6 @@
       magazineCapacity: 3
   - type: WeaponControl
     posture: Free
+  - type: Countermeasures
+    flares: 30
+    chaff: 30

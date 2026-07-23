@@ -42,6 +42,8 @@ public sealed class SerializationTests
                     HullCurrent = 320f,
                     HullMax = 400f,
                     LockedTrackId = 3,
+                    Rwr = RwrThreat.MissileActive,
+                    MaxWeaponRangeKm = 120f,
                     Sprite = "own.png",
                     SpriteScale = 1.25f,
                     SpriteVisible = true,
@@ -85,6 +87,8 @@ public sealed class SerializationTests
             Assert.That(wire.Tracks[0].EstimatedPosition, Is.EqualTo(new Vector2(10f, 20f)));
             Assert.That(wire.OwnUnits[0].Name, Is.EqualTo("Flagship"));
             Assert.That(wire.OwnUnits[0].LockedTrackId, Is.EqualTo(3));
+            Assert.That(wire.OwnUnits[0].Rwr, Is.EqualTo(RwrThreat.MissileActive));
+            Assert.That(wire.OwnUnits[0].MaxWeaponRangeKm, Is.EqualTo(120f));
             Assert.That(wire.OwnUnits[0].Sprite, Is.EqualTo("own.png"));
             Assert.That(wire.OwnUnits[0].Weapons, Has.Count.EqualTo(2));
             Assert.That(wire.OwnUnits[0].Weapons[1].PointDefense, Is.True);

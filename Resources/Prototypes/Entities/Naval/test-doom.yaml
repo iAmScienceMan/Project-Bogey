@@ -6,6 +6,9 @@
     value: 0.3
   - type: ClassificationProfile
     typeName: Experimental Test Platform
+  - type: Countermeasures
+    flares: 200
+    chaff: 200
   - type: Sensor
     rangeKm: 170
   - type: Propulsion

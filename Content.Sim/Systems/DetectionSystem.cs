@@ -26,15 +26,20 @@ public sealed class DetectionSystem : EntitySystem
 
     public override void Update()
     {
-        List<(EntityUid Uid, string Faction, Vector2 Position, float Signature)> targets = new();
+        List<(EntityUid Uid, string Faction, Vector2 Position, Vector2 Velocity, float Signature, bool CanNotch)> targets = new();
         EntityQueryEnumerator<Signature, Transform> targetQuery = _entities.AllEntityQuery<Signature, Transform>();
         while (targetQuery.MoveNext(out EntityUid targetEntity, out Signature signature, out Transform targetTransform))
         {
+            bool canNotch = _entities.TryGetComponent(targetEntity, out ClassificationProfile profile)
+                && profile.Domain == ContactDomain.Air;
+
             targets.Add((
                 targetEntity,
                 _entities.GetComponent<Faction>(targetEntity).EffectiveId,
                 targetTransform.Position,
-                signature.Value));
+                targetTransform.Velocity,
+                signature.Value,
+                canNotch));
         }
 
         EntityQueryEnumerator<Sensor, Transform> sensorQuery = _entities.AllEntityQuery<Sensor, Transform>();
@@ -47,8 +52,9 @@ public sealed class DetectionSystem : EntitySystem
 
             string observerFaction = _entities.GetComponent<Faction>(sensorEntity).EffectiveId;
             Vector2 sensorPos = sensorTransform.Position;
+            Vector2 sensorVel = sensorTransform.Velocity;
 
-            foreach ((EntityUid targetEntity, string targetFaction, Vector2 targetPos, float signature) in targets)
+            foreach ((EntityUid targetEntity, string targetFaction, Vector2 targetPos, Vector2 targetVel, float signature, bool canNotch) in targets)
             {
                 if (string.Equals(targetFaction, observerFaction, StringComparison.Ordinal))
                 {
@@ -57,6 +63,7 @@ public sealed class DetectionSystem : EntitySystem
 
                 float distance = Vector2.Distance(sensorPos, targetPos);
                 float p = DetectionMath.Probability(distance, sensor, signature);
+                p *= NotchFactor(canNotch, sensorPos, sensorVel, targetPos, targetVel);
 
                 double roll = _rng.NextDouble();
                 if (roll >= p)
@@ -74,6 +81,32 @@ public sealed class DetectionSystem : EntitySystem
                 });
             }
         }
+    }
+
+    private float NotchFactor(bool canNotch, Vector2 sensorPos, Vector2 sensorVel, Vector2 targetPos, Vector2 targetVel)
+    {
+        if (!canNotch)
+        {
+            return 1f;
+        }
+
+        Vector2 relativeVelocity = targetVel - sensorVel;
+        float closingSpeed = relativeVelocity.Length();
+        float gate = _config.NotchGateKmPerSecond;
+        if (closingSpeed <= gate)
+        {
+            return 1f;
+        }
+
+        Vector2 lineOfSight = targetPos - sensorPos;
+        float distance = lineOfSight.Length();
+        if (distance < 1e-4f)
+        {
+            return 1f;
+        }
+
+        float radialSpeed = MathF.Abs(Vector2.Dot(relativeVelocity, lineOfSight / distance));
+        return radialSpeed < gate ? _config.NotchAttenuation : 1f;
     }
 
     private Vector2 NoiseOffset(float distance, float rangeKm)

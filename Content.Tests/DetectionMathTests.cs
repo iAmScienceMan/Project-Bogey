@@ -55,6 +55,21 @@ public sealed class DetectionMathTests
     }
 
     [Test]
+    public void DetectionRange_FollowsFourthRootOfSignature()
+    {
+        Sensor sensor = new() { RangeKm = 160f, MaxDetectProbability = 0.9f, FalloffExponent = 1.5f };
+
+        float loud = DetectionMath.DetectionRangeKm(sensor, 1.0f);
+        float stealthy = DetectionMath.DetectionRangeKm(sensor, 1f / 16f);
+
+        Assert.That(loud, Is.EqualTo(160f).Within(1e-3f));
+        Assert.That(stealthy, Is.EqualTo(80f).Within(1e-3f),
+            "a 16x smaller radar cross-section should halve detection range (fourth-root law)");
+        Assert.That(DetectionMath.Probability(90f, sensor, 1f / 16f), Is.EqualTo(0f),
+            "a stealthy target beyond its shrunken detection bubble is invisible");
+    }
+
+    [Test]
     public void Probability_IsHighestAtPointBlank()
     {
         Sensor sensor = new() { RangeKm = 100f, MaxDetectProbability = 0.9f, FalloffExponent = 1.5f };

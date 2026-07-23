@@ -43,6 +43,12 @@ public sealed class Projectile : Component
 
     public bool DatumPassed { get; set; }
 
+    public float DistanceTraveledKm { get; set; }
+
+    public Vector2 EstimatedTargetPosition { get; set; }
+
+    public Vector2 EstimatedTargetVelocity { get; set; }
+
     public Vector2 LastTargetPosition { get; set; }
 
     public bool HadLiveTarget { get; set; }

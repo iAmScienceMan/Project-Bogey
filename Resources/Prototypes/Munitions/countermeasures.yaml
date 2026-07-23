@@ -1,0 +1,27 @@
+# Decoys spawned by the CountermeasureSystem. No Signature (invisible to search
+# radar); they exist only to be locked by a matching seeker type, then expire.
+- id: flare
+  components:
+  - type: Transform
+  - type: Faction
+    side: Neutral
+  - type: Health
+    max: 1
+  - type: Decoy
+    kind: Flare
+    lifetimeTicks: 8
+  - type: Sprite
+    texture: unknown.png
+
+- id: chaff
+  components:
+  - type: Transform
+  - type: Faction
+    side: Neutral
+  - type: Health
+    max: 1
+  - type: Decoy
+    kind: Chaff
+    lifetimeTicks: 8
+  - type: Sprite
+    texture: unknown.png

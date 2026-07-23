@@ -379,6 +379,8 @@ public sealed class FireControlSystem : EntitySystem
         munition.OwnerEntity = shooter;
         munition.TargetEntity = target;
         munition.ObserverFaction = side.EffectiveId;
+        munition.EstimatedTargetPosition = track.EstimatedPosition;
+        munition.EstimatedTargetVelocity = track.EstimatedVelocity;
         munition.Datum = GuidanceSystem.InterceptPoint(
             origin, munition.SpeedKmPerTick, track.EstimatedPosition, track.EstimatedVelocity);
         Faction munitionFaction = _entities.GetComponent<Faction>(munitionEntity);

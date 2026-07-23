@@ -12,6 +12,13 @@ public sealed record WeaponStatusView
     public required bool PointDefense { get; init; }
 }
 
+public enum RwrThreat
+{
+    None,
+    LockedOn,
+    MissileActive,
+}
+
 public sealed record OwnUnitView
 {
     public required string Name { get; init; }
@@ -21,6 +28,8 @@ public sealed record OwnUnitView
     public float HullCurrent { get; init; }
     public float HullMax { get; init; }
     public int? LockedTrackId { get; init; }
+    public RwrThreat Rwr { get; init; }
+    public float MaxWeaponRangeKm { get; init; }
     public string? Sprite { get; init; }
     public float SpriteScale { get; init; } = 1f;
     public bool SpriteVisible { get; init; } = true;

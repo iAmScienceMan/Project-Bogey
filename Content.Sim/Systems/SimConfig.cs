@@ -28,5 +28,9 @@ public sealed class SimConfig
 
     public int DropAfterIdleTicks { get; init; } = 20;
 
+    public float NotchGateKmPerSecond { get; init; } = 0.1f;
+
+    public float NotchAttenuation { get; init; } = 0.05f;
+
     public bool AiEnabled { get; set; } = true;
 }

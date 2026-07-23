@@ -42,6 +42,8 @@ public static class SnapshotSerializer
             writer.Write(unit.HullCurrent);
             writer.Write(unit.HullMax);
             WriteNullableInt(writer, unit.LockedTrackId);
+            writer.Write((int)unit.Rwr);
+            writer.Write(unit.MaxWeaponRangeKm);
             WriteString(writer, unit.Sprite);
             writer.Write(unit.SpriteScale);
             writer.Write(unit.SpriteVisible);
@@ -120,6 +122,8 @@ public static class SnapshotSerializer
             float hullCurrent = reader.ReadSingle();
             float hullMax = reader.ReadSingle();
             int? lockedTrackId = ReadNullableInt(reader);
+            RwrThreat rwr = (RwrThreat)reader.ReadInt32();
+            float maxWeaponRangeKm = reader.ReadSingle();
             string? sprite = ReadString(reader);
             float spriteScale = reader.ReadSingle();
             bool spriteVisible = reader.ReadBoolean();
@@ -146,6 +150,8 @@ public static class SnapshotSerializer
                 HullCurrent = hullCurrent,
                 HullMax = hullMax,
                 LockedTrackId = lockedTrackId,
+                Rwr = rwr,
+                MaxWeaponRangeKm = maxWeaponRangeKm,
                 Sprite = sprite,
                 SpriteScale = spriteScale,
                 SpriteVisible = spriteVisible,
