@@ -50,6 +50,13 @@ public sealed partial class LobbyScreen : Control
         set => _colorSlider.Value = value;
     }
 
+    public void SetNowPlaying(string? trackName)
+    {
+        LobbySongLabel.Text = trackName is { Length: > 0 }
+            ? "Now playing: " + trackName
+            : "No lobby music playing.";
+    }
+
     public void Update(LobbyStatus? status, string username)
     {
         if (!ReferenceEquals(status, _status))

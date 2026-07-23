@@ -5,6 +5,7 @@ using System.Numerics;
 using Lattice.Logging;
 using Lattice.Renderer.Camera;
 using Lattice.Renderer.Gl;
+using Content.Renderer.Audio;
 using Content.Renderer.Map;
 using Content.Renderer.RealTime;
 using Lattice.Renderer.Text;
@@ -87,6 +88,7 @@ public sealed class TacticalWindow : IDisposable, IAppControl
 
     private readonly NetGraph _netGraph = new();
     private readonly GroundTruthOverlayView _groundTruth = new();
+    private AudioManager _audio = null!;
 
     private Screen _screen = Screen.MainMenu;
     private string? _pendingHost;
@@ -163,8 +165,11 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         _entitySprites = EntitySprites.Load(_gl, _options.SpritesPath);
         _text = new TextBatch(_gl, _font);
 
+        _audio = new AudioManager(_options.SpritesPath);
+
         _console = new DevConsole(Logger.LogManager, new object[] { this, _cfg, _consoleContext });
         _consoleContext.Overlay = _groundTruth;
+        _consoleContext.Audio = _audio;
 
         _mainMenu = new MainMenuScreen(_cfg, _changelog);
         _mainMenu.OnConnect += (host, port) => _console.RunCommand(
@@ -338,6 +343,7 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         if (_screen == Screen.Lobby)
         {
             _lobbyScreen.Update(_session?.Lobby, _session?.Username ?? string.Empty);
+            _lobbyScreen.SetNowPlaying(_audio.CurrentMusicName);
         }
 
         Control screen = ActiveRoot;
@@ -371,6 +377,15 @@ public sealed class TacticalWindow : IDisposable, IAppControl
         if (_screen == _syncedScreen)
         {
             return;
+        }
+
+        if (_screen == Screen.Lobby)
+        {
+            _audio.PlayMusic(AudioManager.LobbyTrack);
+        }
+        else
+        {
+            _audio.StopMusic();
         }
 
         _syncedScreen = _screen;
@@ -467,6 +482,7 @@ public sealed class TacticalWindow : IDisposable, IAppControl
 
     private void EnterTactical()
     {
+        _audio.StopMusic();
         _map = new TacticalMapRenderer();
         _camera = new Camera2D(LogicalSize(), Vector2.Zero, _cfg.GetCVar(CVars.RenderZoom));
         _hud = new TacticalHud(_session!, Recenter, _console.RunCommand);
@@ -1078,6 +1094,7 @@ public sealed class TacticalWindow : IDisposable, IAppControl
     private void OnClosing()
     {
         _session?.Disconnect();
+        _audio.Dispose();
         _hubClient.Dispose();
         _prims.Dispose();
         _sprites.Dispose();

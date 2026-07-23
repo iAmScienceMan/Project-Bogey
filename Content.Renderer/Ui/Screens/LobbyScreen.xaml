@@ -8,13 +8,9 @@
     </BoxContainer>
   </PanelContainer>
 
-  <!--
-  DISABLED UNTIL THE FEATURE IS IMPLEMENTED
-
   <BoxContainer Anchor="BottomLeft" Margin="24 0 0 20" Orientation="Vertical" Separation="4" Padding="8">
     <Label Name="LobbySongLabel" Text="No lobby music playing." FontSize="11" Color="#9EAECC" />
   </BoxContainer>
-  -->
 
   <PanelContainer Anchor="TopRight" Margin="0 24 24 0">
     <BoxContainer Orientation="Vertical" DrawBackground="false" Separation="10" Padding="22">
