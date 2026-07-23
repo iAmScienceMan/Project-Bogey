@@ -25,7 +25,7 @@
       cooldownTicks: 20
       magazineCapacity: 8
     - pointDefense: true
-      pointDefensePk: 0.6
+      pointDefensePk: 0.45
       pointDefenseRangeKm: 9
       cooldownTicks: 1
       magazineCapacity: 300
