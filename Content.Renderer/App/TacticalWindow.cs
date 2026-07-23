@@ -310,6 +310,7 @@ public sealed class TacticalWindow : IDisposable, IAppControl
 
         SetLayer(RenderLayer.World);
         _map!.Draw(_session!, _camera, _prims, _sprites, _entitySprites, _text, dt, _selectedUnit, _selectedTarget, _pendingOrders, ownColor);
+        _map.DrawScaleBar(_prims, _text, _camera, viewport);
 
         if (_session!.GroundTruth is { } groundTruth)
         {

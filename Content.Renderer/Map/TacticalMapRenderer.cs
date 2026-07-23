@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Numerics;
 using Lattice.Renderer.Camera;
 using Lattice.Renderer.Gl;
@@ -85,8 +86,14 @@ public sealed class TacticalMapRenderer
 
         foreach ((OwnUnitView unit, Vector2 worldPos) in Interp.OwnUnits(session))
         {
+            if (unit.MaxWeaponRangeKm > 0f)
+            {
+                prims.Ring(camera.WorldToScreen(worldPos), camera.KmToPixels(unit.MaxWeaponRangeKm), ownColor.WithAlpha(0.10f), 72);
+            }
+
             bool selected = string.Equals(unit.Name, selectedUnit, StringComparison.Ordinal);
             DrawOwnUnit(prims, sprites, entitySprites, text, camera, unit, worldPos, selected, ownColor);
+            DrawRwr(text, camera, unit, worldPos);
 
             if (selected && unit.LockedTrackId is { } lockedId && _visuals.TryGetValue(lockedId, out TrackVisual? lockedVisual))
             {
@@ -162,6 +169,57 @@ public sealed class TacticalMapRenderer
         }
 
         prims.Line(apex, previous, edge);
+    }
+
+    private static readonly Rgba RwrLockColor = new(1.0f, 0.82f, 0.25f);
+    private static readonly Rgba RwrMissileColor = new(1.0f, 0.30f, 0.25f);
+    private static readonly Rgba ScaleColor = new(0.72f, 0.78f, 0.85f, 0.7f);
+    private static readonly float[] ScaleSteps = { 1f, 2f, 5f, 10f, 20f, 50f, 100f, 200f, 500f, 1000f, 2000f, 5000f };
+
+    public void DrawScaleBar(PrimitiveBatch prims, TextBatch text, Camera2D camera, Vector2 viewport)
+    {
+        float pxPerKm = camera.KmToPixels(1f);
+        if (pxPerKm <= 0f || float.IsInfinity(pxPerKm))
+        {
+            return;
+        }
+
+        float chosenKm = ScaleSteps[0];
+        foreach (float step in ScaleSteps)
+        {
+            if (pxPerKm * step <= 140f)
+            {
+                chosenKm = step;
+            }
+        }
+
+        float barPx = pxPerKm * chosenKm;
+        float x0 = (viewport.X * 0.5f) - (barPx * 0.5f);
+        float y = viewport.Y - 26f;
+
+        prims.Line(new Vector2(x0, y), new Vector2(x0 + barPx, y), ScaleColor);
+        prims.Line(new Vector2(x0, y - 4f), new Vector2(x0, y + 4f), ScaleColor);
+        prims.Line(new Vector2(x0 + barPx, y - 4f), new Vector2(x0 + barPx, y + 4f), ScaleColor);
+
+        string label = chosenKm >= 1000f
+            ? (chosenKm / 1000f).ToString(CultureInfo.InvariantCulture) + " Mm"
+            : chosenKm.ToString(CultureInfo.InvariantCulture) + " km";
+        text.Text(new Vector2(x0 + (barPx * 0.5f) - (TextBatch.Measure(label, 11f) * 0.5f), y - 17f), 11f, ScaleColor, label);
+    }
+
+    private static void DrawRwr(TextBatch text, Camera2D camera, OwnUnitView unit, Vector2 world)
+    {
+        if (unit.Rwr == RwrThreat.None)
+        {
+            return;
+        }
+
+        (string label, Rgba color) = unit.Rwr == RwrThreat.MissileActive
+            ? ("RWR: MISSILE", RwrMissileColor)
+            : ("RWR: LOCK", RwrLockColor);
+
+        Vector2 screen = camera.WorldToScreen(world);
+        text.Text(screen + new Vector2(-TextBatch.Measure(label, 11f) * 0.5f, -26f), 11f, color, label);
     }
 
     private static string PhaseOf(MunitionView munition)
